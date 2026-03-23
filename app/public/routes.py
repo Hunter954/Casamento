@@ -1,4 +1,5 @@
 from datetime import datetime
+from urllib.parse import quote_plus
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app import db
 from app.models import SiteSettings, GuestbookMessage, RSVP, GiftItem, GiftPurchase
@@ -8,13 +9,69 @@ from app.services.mercado_pago import MercadoPagoService
 public_bp = Blueprint('public', __name__)
 
 
+def _location_query(settings):
+    parts = []
+    if settings:
+        parts = [
+            getattr(settings, 'wedding_location_name', '') or '',
+            getattr(settings, 'wedding_address', '') or '',
+            getattr(settings, 'wedding_city', '') or '',
+        ]
+    return ', '.join([part.strip() for part in parts if part and part.strip()])
+
+
+def _map_embed_url(settings):
+    if settings and settings.map_embed_url:
+        return settings.map_embed_url
+    query = _location_query(settings)
+    if not query:
+        return ''
+    return f"https://maps.google.com/maps?q={quote_plus(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed"
+
+
+def _route_url(settings):
+    if settings and settings.route_url:
+        return settings.route_url
+    query = _location_query(settings)
+    if not query:
+        return ''
+    return f"https://www.google.com/maps/dir/?api=1&destination={quote_plus(query)}"
+
+
+def _guestbook_cards(messages):
+    cards = []
+    for item in messages:
+        raw_name = (item.author_name or '').strip()
+        parts = [part for part in raw_name.split() if part]
+        if len(parts) >= 2:
+            initials = (parts[0][0] + parts[1][0]).upper()
+        elif parts:
+            initials = parts[0][:2].upper()
+        else:
+            initials = '??'
+        cards.append({
+            'item': item,
+            'initials': initials,
+            'posted_at': item.created_at.strftime('%d/%m/%Y') if item.created_at else '',
+        })
+    return cards
+
+
 @public_bp.route('/')
 def home():
     settings = SiteSettings.query.first()
     guestbook_messages = GuestbookMessage.query.filter_by(approved=True).order_by(GuestbookMessage.created_at.desc()).limit(8).all()
     gifts = GiftItem.query.filter_by(active=True).order_by(GiftItem.created_at.desc()).limit(6).all()
     countdown_target = settings.wedding_date.isoformat() if settings and settings.wedding_date else ''
-    return render_template('public/home.html', settings=settings, guestbook_messages=guestbook_messages, gifts=gifts, countdown_target=countdown_target)
+    return render_template(
+        'public/home.html',
+        settings=settings,
+        guestbook_messages=_guestbook_cards(guestbook_messages),
+        gifts=gifts,
+        countdown_target=countdown_target,
+        computed_map_embed_url=_map_embed_url(settings),
+        computed_route_url=_route_url(settings),
+    )
 
 
 @public_bp.route('/confirmar-presenca', methods=['GET', 'POST'])
@@ -52,7 +109,7 @@ def guestbook():
         flash('Recado enviado! Ele aparecerá após aprovação.' if settings.require_guestbook_approval else 'Recado publicado com sucesso!', 'success')
         return redirect(url_for('public.guestbook'))
     messages = GuestbookMessage.query.filter_by(approved=True).order_by(GuestbookMessage.created_at.desc()).all()
-    return render_template('public/guestbook.html', messages=messages)
+    return render_template('public/guestbook.html', messages=_guestbook_cards(messages))
 
 
 @public_bp.route('/presentes')

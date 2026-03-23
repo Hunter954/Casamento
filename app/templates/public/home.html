@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ settings.couple_names if settings else 'Casamento' }}{% endblock %}
 {% block content %}
-<header class="site-header">
+<header class="site-header home-header">
   <div class="container site-header-inner">
     <a href="{{ url_for('public.home') }}" class="site-brand">{{ settings.couple_names if settings else 'Casamento' }}</a>
     <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="site-drawer" data-menu-toggle>
@@ -64,12 +64,12 @@
       <div class="meta-box"><i class="fa-regular fa-clock"></i><div><strong>{{ settings.wedding_time }}</strong><small>Horário da cerimônia</small></div></div>
     </div>
     <div class="map-card">
-      {% if settings.map_embed_url %}
-      <iframe src="{{ settings.map_embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      {% if computed_map_embed_url %}
+      <iframe src="{{ computed_map_embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       {% else %}
-      <div class="map-placeholder"><i class="fa-solid fa-heart"></i><p>Adicione o mapa no painel administrativo.</p></div>
+      <div class="map-placeholder"><i class="fa-solid fa-heart"></i><p>Adicione o endereço no painel administrativo.</p></div>
       {% endif %}
-      <a class="btn btn-route" href="{{ settings.route_url or '#' }}" target="_blank">Ir para rota</a>
+      <a class="btn btn-route" href="{{ computed_route_url or '#' }}" target="_blank">Ir para rota</a>
     </div>
   </section>
 
@@ -90,30 +90,42 @@
       <span>Lista de presentes</span>
       <h2>Alguns presentes disponíveis</h2>
     </div>
-    <div class="gift-grid">
+    <div class="gift-grid preview-grid">
       {% for gift in gifts %}
-      <article class="gift-item">
-        <div class="gift-thumb" {% if gift.image_url %}style="background-image:url('{{ gift.image_url }}')"{% endif %}></div>
-        <div>
-          <h3>{{ gift.title }}</h3>
+      {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
+      <article class="gift-item preview-card">
+        <div class="gift-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
+        <div class="gift-content">
+          <div class="gift-head-row">
+            <h3>{{ gift.title }}</h3>
+            <strong class="gift-price">R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+          </div>
           <p>{{ gift.description }}</p>
-          <strong>R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+          <div class="gift-actions-row">
+            <a href="{{ url_for('public.gift_checkout', gift_id=gift.id) }}" class="btn btn-primary gift-buy-btn">Comprar presente</a>
+          </div>
         </div>
       </article>
       {% endfor %}
     </div>
   </section>
 
-  <section class="section-card">
+  <section class="section-card guestbook-home-card">
     <div class="section-title small-gap">
       <span>Mural de recados</span>
       <h2>Carinho de quem estará com a gente</h2>
     </div>
-    <div class="guestbook-list">
-      {% for item in guestbook_messages %}
-      <article class="guestbook-item">
-        <strong>{{ item.author_name }}</strong>
-        <p>{{ item.message }}</p>
+    <div class="guestbook-list refined-guestbook-list">
+      {% for card in guestbook_messages %}
+      <article class="guestbook-item refined-guestbook-item">
+        <div class="guestbook-topline">
+          <span class="guestbook-avatar">{{ card.initials }}</span>
+          <div>
+            <strong>{{ card.item.author_name }}</strong>
+            <small>{{ card.posted_at }}</small>
+          </div>
+        </div>
+        <p>{{ card.item.message }}</p>
       </article>
       {% else %}
       <article class="guestbook-item empty">Os primeiros recados aparecerão aqui.</article>

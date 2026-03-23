@@ -1,20 +1,22 @@
 {% extends 'base.html' %}
 {% block title %}Lista de presentes{% endblock %}
 {% block content %}
-<div class="page-shell container narrow">
+<div class="page-shell container gifts-page-shell">
   <a href="{{ url_for('public.home') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
-  <div class="section-card">
-    <div class="section-title"><span>Presentes</span><h1>Escolha um presente especial</h1></div>
-    <div class="gift-grid long-grid">
+  <div class="section-card gifts-page-card">
+    <div class="section-title gifts-page-title"><span>Presentes</span><h1>Escolha um presente especial</h1></div>
+    <div class="gift-grid gifts-catalog-grid">
       {% for gift in gifts %}
       {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
-      <article class="gift-item full">
-        <div class="gift-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
-        <div>
-          <h3>{{ gift.title }}</h3>
+      <article class="gift-item gift-catalog-card">
+        <div class="gift-thumb gift-catalog-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
+        <div class="gift-content">
+          <div class="gift-head-row gift-head-row-stack">
+            <h3>{{ gift.title }}</h3>
+            <strong class="gift-price">R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+          </div>
           <p>{{ gift.description }}</p>
-          <strong>R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
-          <a href="{{ url_for('public.gift_checkout', gift_id=gift.id) }}" class="btn btn-primary btn-full">Pagar presente</a>
+          <a href="{{ url_for('public.gift_checkout', gift_id=gift.id) }}" class="btn btn-primary btn-full">Comprar presente</a>
         </div>
       </article>
       {% endfor %}
