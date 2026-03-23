@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block body_class %}admin-body{% endblock %}
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div>
+      <h2>Painel</h2>
+      <p>Wedding Moments</p>
+    </div>
+    <nav>
+      <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('admin.settings') }}">Configurações do site</a>
+      <a href="{{ url_for('admin.manage_gifts') }}">Presentes</a>
+      <a href="{{ url_for('admin.manage_rsvps') }}">Confirmações</a>
+      <a href="{{ url_for('admin.manage_guestbook') }}">Mural</a>
+      <a href="{{ url_for('admin.purchases') }}">Compras</a>
+      <a href="{{ url_for('admin.contacts') }}">Contatos</a>
+      <a href="{{ url_for('admin.campaigns') }}">Campanhas WhatsApp</a>
+      <a href="{{ url_for('admin.logout') }}">Sair</a>
+    </nav>
+  </aside>
+  <main class="admin-main">
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'admin/base.html' %}
+{% block admin_content %}
+<div class="admin-header"><h1>Visão geral</h1><p>Resumo rápido do site e das interações.</p></div>
+<div class="stats-grid">
+  <div class="stat-card"><span>Confirmações</span><strong>{{ stats.rsvps }}</strong></div>
+  <div class="stat-card"><span>Recados aprovados</span><strong>{{ stats.approved_messages }}</strong></div>
+  <div class="stat-card"><span>Presentes</span><strong>{{ stats.gifts }}</strong></div>
+  <div class="stat-card"><span>Pagamentos aprovados</span><strong>{{ stats.paid }}</strong></div>
+</div>
+<div class="section-card">
+  <h2>Últimas compras</h2>
+  <div class="table-wrap"><table><thead><tr><th>Comprador</th><th>Presente</th><th>Valor</th><th>Status</th></tr></thead><tbody>
+    {% for item in purchases %}
+    <tr><td>{{ item.buyer_name }}</td><td>{{ item.gift.title if item.gift else '-' }}</td><td>R$ {{ '%.2f'|format(item.amount)|replace('.', ',') }}</td><td>{{ item.status }}</td></tr>
+    {% else %}
+    <tr><td colspan="4">Nenhuma compra ainda.</td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

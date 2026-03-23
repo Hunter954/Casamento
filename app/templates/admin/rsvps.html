@@ -1,0 +1,9 @@
+{% extends 'admin/base.html' %}
+{% block admin_content %}
+<div class="admin-header"><h1>Confirmações de presença</h1><p>Veja quem confirmou e as mensagens enviadas.</p></div>
+<div class="section-card"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Presença</th><th>Pessoas</th><th>Mensagem</th></tr></thead><tbody>
+{% for item in rsvps %}
+<tr><td>{{ item.guest_name }}</td><td>{{ item.phone }}</td><td>{{ item.attendance }}</td><td>{{ item.guests_count }}</td><td>{{ item.message }}</td></tr>
+{% else %}<tr><td colspan="5">Nenhuma confirmação ainda.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'admin/base.html' %}
+{% block admin_content %}
+<div class="admin-header"><h1>Campanhas WhatsApp</h1><p>Crie o texto, dispare e evite reenvios para quem já recebeu.</p></div>
+<form class="section-card stack-form" method="post">
+  <label>Título da campanha<input name="title" required></label>
+  <label>Mensagem<textarea name="message" required></textarea></label>
+  <button class="btn btn-primary">Criar campanha</button>
+</form>
+<div class="section-card">
+  <h2>Campanhas salvas</h2>
+  <div class="table-wrap"><table><thead><tr><th>Título</th><th>Mensagem</th><th>Contatos</th><th></th></tr></thead><tbody>
+    {% for item in campaigns %}
+    <tr>
+      <td>{{ item.title }}</td>
+      <td>{{ item.message }}</td>
+      <td>{{ contacts|length }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin.trigger_campaign', campaign_id=item.id) }}">
+          <button class="btn btn-soft">Disparar agora</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">Nenhuma campanha criada.</td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

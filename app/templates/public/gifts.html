@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Lista de presentes{% endblock %}
+{% block content %}
+<div class="page-shell container narrow">
+  <a href="{{ url_for('public.home') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+  <div class="section-card">
+    <div class="section-title"><span>Presentes</span><h1>Escolha um presente especial</h1></div>
+    <div class="gift-grid long-grid">
+      {% for gift in gifts %}
+      <article class="gift-item full">
+        <div class="gift-thumb" {% if gift.image_url %}style="background-image:url('{{ gift.image_url }}')"{% endif %}></div>
+        <div>
+          <h3>{{ gift.title }}</h3>
+          <p>{{ gift.description }}</p>
+          <strong>R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+          <a href="{{ url_for('public.gift_checkout', gift_id=gift.id) }}" class="btn btn-primary btn-full">Presentear agora</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

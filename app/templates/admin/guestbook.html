@@ -1,0 +1,9 @@
+{% extends 'admin/base.html' %}
+{% block admin_content %}
+<div class="admin-header"><h1>Mural de recados</h1><p>Modere e aprove mensagens.</p></div>
+<div class="section-card"><div class="table-wrap"><table><thead><tr><th>Autor</th><th>Recado</th><th>Status</th><th></th></tr></thead><tbody>
+{% for item in messages %}
+<tr><td>{{ item.author_name }}</td><td>{{ item.message }}</td><td>{{ 'Aprovado' if item.approved else 'Pendente' }}</td><td>{% if not item.approved %}<a href="{{ url_for('admin.approve_message', message_id=item.id) }}">Aprovar</a>{% endif %}</td></tr>
+{% else %}<tr><td colspan="4">Nenhum recado ainda.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
