@@ -1,14 +1,34 @@
 {% extends 'base.html' %}
 {% block title %}{{ settings.couple_names if settings else 'Casamento' }}{% endblock %}
 {% block content %}
-<header class="mobile-topbar">
-  <a href="#evento">Evento</a>
-  <a href="{{ url_for('public.rsvp') }}">Confirmar presença</a>
-  <a href="{{ url_for('public.guestbook') }}">Mural</a>
-  <a href="{{ url_for('public.gifts') }}">Presentes</a>
+<header class="site-mobile-header">
+  <a href="{{ url_for('public.home') }}" class="site-brand">{{ settings.couple_names if settings else 'Casamento' }}</a>
+  <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="mobile-drawer" aria-expanded="false" data-menu-toggle>
+    <i class="fa-solid fa-bars-staggered"></i>
+  </button>
 </header>
 
-<section class="hero-section">
+<div class="drawer-backdrop" data-drawer-backdrop></div>
+<aside class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+  <div class="mobile-drawer-header">
+    <div>
+      <span class="drawer-kicker">Menu</span>
+      <strong>{{ settings.couple_names if settings else 'Casamento' }}</strong>
+    </div>
+    <button class="menu-close" type="button" aria-label="Fechar menu" data-menu-close>
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <nav class="mobile-drawer-nav">
+    <a href="{{ url_for('public.home') }}">Início</a>
+    <a href="#evento">Detalhes do evento</a>
+    <a href="{{ url_for('public.rsvp') }}">Confirmar presença</a>
+    <a href="{{ url_for('public.guestbook') }}">Mural de recados</a>
+    <a href="{{ url_for('public.gifts') }}">Lista de presentes</a>
+  </nav>
+</aside>
+
+<section class="hero-section hero-centered">
   <div class="hero-overlay"></div>
   <div class="hero-content container">
     <span class="hero-pill">Nosso grande dia</span>
@@ -21,15 +41,15 @@
       <div><strong data-minutes>00</strong><span>min</span></div>
       <div><strong data-seconds>00</strong><span>seg</span></div>
     </div>
-    <div class="hero-actions">
+    <div class="hero-actions hero-actions-centered">
       <a href="{{ url_for('public.rsvp') }}" class="btn btn-primary">Confirmar presença</a>
       <a href="#presentes-home" class="btn btn-soft">Presentear</a>
     </div>
   </div>
 </section>
 
-<main class="container main-stack">
-  <section id="evento" class="glass-card section-card">
+<main class="container main-stack home-main-stack">
+  <section id="evento" class="glass-card section-card section-card-spaced">
     <div class="section-title">
       <span>Detalhes do evento</span>
       <h2>Onde e quando viver esse momento</h2>
@@ -68,12 +88,14 @@
     </div>
     <div class="gift-grid">
       {% for gift in gifts %}
+      {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
       <article class="gift-item">
-        <div class="gift-thumb" {% if gift.image_url %}style="background-image:url('{{ gift.image_url }}')"{% endif %}></div>
+        <div class="gift-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
         <div>
           <h3>{{ gift.title }}</h3>
           <p>{{ gift.description }}</p>
           <strong>R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+          <a href="{{ url_for('public.gift_checkout', gift_id=gift.id) }}" class="btn btn-soft btn-inline-pay">Pagar presente</a>
         </div>
       </article>
       {% endfor %}

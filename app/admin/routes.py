@@ -95,9 +95,13 @@ def manage_gifts():
             title=request.form.get('title', ''),
             description=request.form.get('description', ''),
             price=float(request.form.get('price', 0) or 0),
-            image_url=request.form.get('image_url', ''),
+            image_url='',
             active=request.form.get('active') == 'on',
         )
+        image_file = request.files.get('image_file')
+        image_path = save_upload(image_file)
+        if image_path:
+            gift.image_url = image_path
         db.session.add(gift)
         db.session.commit()
         flash('Presente cadastrado.', 'success')

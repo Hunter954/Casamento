@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const countdown = document.querySelector('[data-countdown]');
   if (countdown) {
-    const target = new Date(countdown.getAttribute('data-countdown'));
+    const targetValue = countdown.getAttribute('data-countdown');
+    const target = targetValue ? new Date(targetValue) : null;
     const els = {
       days: countdown.querySelector('[data-days]'),
       hours: countdown.querySelector('[data-hours]'),
@@ -9,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
       seconds: countdown.querySelector('[data-seconds]'),
     };
     const update = () => {
+      if (!target || Number.isNaN(target.getTime())) return;
       const now = new Date();
       const diff = Math.max(0, target - now);
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -32,5 +34,41 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       messageArea.value = data.message;
     });
+  }
+
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.querySelector('[data-drawer-backdrop]');
+  const toggle = document.querySelector('[data-menu-toggle]');
+  const closeBtn = document.querySelector('[data-menu-close]');
+
+  const closeDrawer = () => {
+    if (!drawer || !toggle || !backdrop) return;
+    drawer.classList.remove('is-open');
+    backdrop.classList.remove('is-visible');
+    toggle.setAttribute('aria-expanded', 'false');
+    drawer.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('drawer-open');
+  };
+
+  const openDrawer = () => {
+    if (!drawer || !toggle || !backdrop) return;
+    drawer.classList.add('is-open');
+    backdrop.classList.add('is-visible');
+    toggle.setAttribute('aria-expanded', 'true');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('drawer-open');
+  };
+
+  if (toggle && drawer && backdrop) {
+    toggle.addEventListener('click', () => {
+      if (drawer.classList.contains('is-open')) closeDrawer();
+      else openDrawer();
+    });
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+  if (backdrop) backdrop.addEventListener('click', closeDrawer);
+  if (drawer) {
+    drawer.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeDrawer));
   }
 });
