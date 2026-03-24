@@ -6,12 +6,13 @@
   <div class="stat-card"><span>Recados aprovados</span><strong>{{ stats.approved_messages }}</strong></div>
   <div class="stat-card"><span>Presentes</span><strong>{{ stats.gifts }}</strong></div>
   <div class="stat-card"><span>Pagamentos aprovados</span><strong>{{ stats.paid }}</strong></div>
+  <div class="stat-card"><span>Total recebido em presentes</span><strong>{{ stats.paid_total|currency_br }}</strong></div>
 </div>
 <div class="section-card">
   <h2>Últimas compras</h2>
   <div class="table-wrap"><table><thead><tr><th>Comprador</th><th>Presente</th><th>Valor</th><th>Status</th></tr></thead><tbody>
     {% for item in purchases %}
-    <tr><td>{{ item.buyer_name }}</td><td>{{ item.gift.title if item.gift else '-' }}</td><td>R$ {{ '%.2f'|format(item.amount)|replace('.', ',') }}</td><td>{{ item.status }}</td></tr>
+    <tr><td>{{ item.buyer_name }}</td><td>{{ item.gift.title if item.gift else '-' }}</td><td>{{ item.amount|currency_br }}</td><td>{{ item.status }}</td></tr>
     {% else %}
     <tr><td colspan="4">Nenhuma compra ainda.</td></tr>
     {% endfor %}

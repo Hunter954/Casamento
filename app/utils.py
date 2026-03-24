@@ -6,7 +6,24 @@ from werkzeug.utils import secure_filename
 
 
 def format_currency(value):
-    return f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+    try:
+        numeric = float(value or 0)
+    except (TypeError, ValueError):
+        numeric = 0.0
+    return f'R$ {numeric:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def format_phone(value):
+    digits = ''.join(char for char in str(value or '') if char.isdigit())
+    if len(digits) == 11:
+        return f'({digits[:2]}) {digits[2:7]}-{digits[7:]}'
+    if len(digits) == 10:
+        return f'({digits[:2]}) {digits[2:6]}-{digits[6:]}'
+    if len(digits) > 11:
+        country = digits[:-11]
+        local = digits[-11:]
+        return f'+{country} ({local[:2]}) {local[2:7]}-{local[7:]}'
+    return str(value or '').strip()
 
 
 def save_upload(file_storage):

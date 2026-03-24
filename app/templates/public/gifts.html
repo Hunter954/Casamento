@@ -20,7 +20,7 @@
                 {% if gift.is_sold_out %}<span class="gift-badge soldout">Esgotado</span>{% endif %}
               </div>
             </div>
-            <strong class="gift-price">R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+            <strong class="gift-price">{{ gift.price|currency_br }}</strong>
           </div>
           <p>{{ gift.description }}</p>
           {% if gift.is_available %}

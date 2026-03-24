@@ -6,6 +6,7 @@ from flask_migrate import Migrate
 from sqlalchemy import inspect, text
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
+from .utils import format_currency, format_phone
 
 load_dotenv()
 
@@ -69,6 +70,9 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
 
 
+    app.jinja_env.filters['currency_br'] = format_currency
+    app.jinja_env.filters['phone_br'] = format_phone
+
     @app.route('/media/<path:filename>')
     def uploaded_media(filename):
         return send_from_directory(app.config['UPLOAD_DIR'], filename)
@@ -85,7 +89,7 @@ def create_app():
             filename = str(file_path).split('/')[-1]
             return url_for('uploaded_media', filename=filename)
 
-        return {'site_settings': settings, 'media_url': media_url}
+        return {'site_settings': settings, 'media_url': media_url, 'format_currency': format_currency, 'format_phone': format_phone}
 
     with app.app_context():
         db.create_all()

@@ -4,6 +4,7 @@ from app import db
 from app.models import SiteSettings, GuestbookMessage, RSVP, GiftItem, GiftPurchase
 from app.services.message_ai import generate_loving_message
 from app.services.mercado_pago import MercadoPagoService
+from app.utils import format_phone
 
 public_bp = Blueprint('public', __name__)
 
@@ -79,7 +80,7 @@ def rsvp():
     if request.method == 'POST':
         rsvp = RSVP(
             guest_name=request.form.get('guest_name', '').strip(),
-            phone=request.form.get('phone', '').strip(),
+            phone=format_phone(request.form.get('phone', '').strip()),
             email=request.form.get('email', '').strip(),
             guests_count=int(request.form.get('guests_count', 1) or 1),
             attendance=request.form.get('attendance', 'yes'),
@@ -132,7 +133,7 @@ def gift_checkout(gift_id):
             gift_id=gift.id,
             buyer_name=request.form.get('buyer_name', '').strip(),
             buyer_email=request.form.get('buyer_email', '').strip(),
-            buyer_phone=request.form.get('buyer_phone', '').strip(),
+            buyer_phone=format_phone(request.form.get('buyer_phone', '').strip()),
             confirmed_presence=request.form.get('confirmed_presence') == 'on',
             message=request.form.get('message', '').strip(),
             amount=gift.price,

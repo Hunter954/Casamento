@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import AdminUser, SiteSettings, RSVP, GuestbookMessage, GiftItem, GiftPurchase, ContactLead, WhatsAppCampaign
-from app.utils import save_upload, parse_datetime
+from app.utils import save_upload, parse_datetime, format_phone
 from app.services.whatsapp import send_campaign_messages
 
 admin_bp = Blueprint('admin', __name__)
@@ -41,11 +41,13 @@ def logout():
 @admin_bp.route('/')
 @login_required
 def dashboard():
+    approved_purchases = GiftPurchase.query.filter_by(status='approved')
     stats = {
         'rsvps': RSVP.query.count(),
         'approved_messages': GuestbookMessage.query.filter_by(approved=True).count(),
         'gifts': GiftItem.query.count(),
-        'paid': GiftPurchase.query.filter_by(status='approved').count(),
+        'paid': approved_purchases.count(),
+        'paid_total': sum(item.amount or 0 for item in approved_purchases.all()),
     }
     purchases = GiftPurchase.query.order_by(GiftPurchase.created_at.desc()).limit(8).all()
     return render_template('admin/dashboard.html', stats=stats, purchases=purchases)
@@ -216,13 +218,23 @@ def purchases():
     return render_template('admin/purchases.html', purchases=purchases)
 
 
+@admin_bp.route('/compras/<int:purchase_id>/excluir', methods=['POST'])
+@login_required
+def delete_purchase(purchase_id):
+    purchase = GiftPurchase.query.get_or_404(purchase_id)
+    db.session.delete(purchase)
+    db.session.commit()
+    flash('Compra excluída com sucesso.', 'success')
+    return redirect(url_for('admin.purchases'))
+
+
 @admin_bp.route('/contatos', methods=['GET', 'POST'])
 @login_required
 def contacts():
     if request.method == 'POST':
         contact = ContactLead(
             name=request.form.get('name', ''),
-            phone=request.form.get('phone', ''),
+            phone=format_phone(request.form.get('phone', '')),
             email=request.form.get('email', ''),
             tag=request.form.get('tag', 'convidado'),
         )

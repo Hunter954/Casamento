@@ -98,7 +98,7 @@
         <div class="gift-content">
           <div class="gift-head-row">
             <h3>{{ gift.title }}</h3>
-            <strong class="gift-price">R$ {{ '%.2f'|format(gift.price)|replace('.', ',') }}</strong>
+            <strong class="gift-price">{{ gift.price|currency_br }}</strong>
           </div>
           <p>{{ gift.description }}</p>
           <div class="gift-actions-row">
@@ -107,6 +107,9 @@
         </div>
       </article>
       {% endfor %}
+    </div>
+    <div class="section-actions-center top-gap">
+      <a href="{{ url_for('public.gifts') }}" class="btn btn-soft">Ver todos os presentes</a>
     </div>
   </section>
 
