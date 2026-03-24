@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from typing import Iterable
 
@@ -32,12 +33,23 @@ def normalize_whatsapp_phone(value: str) -> str:
     return digits
 
 
+def sanitize_zapi_base_url(value: str | None) -> str:
+    raw = (value or '').strip().rstrip('/')
+    if not raw:
+        return 'https://api.z-api.io'
+    if '/instances/' in raw:
+        raw = raw.split('/instances/')[0].rstrip('/')
+    if raw.endswith('/send-text'):
+        raw = raw[:-10].rstrip('/')
+    return raw or 'https://api.z-api.io'
+
+
 def get_whatsapp_config():
     settings = _settings()
     instance_id = (getattr(settings, 'zapi_instance_id', '') or current_app.config.get('ZAPI_INSTANCE_ID', '')).strip()
     token = (getattr(settings, 'zapi_token', '') or current_app.config.get('ZAPI_TOKEN', '')).strip()
     client_token = (getattr(settings, 'zapi_client_token', '') or current_app.config.get('ZAPI_CLIENT_TOKEN', '')).strip()
-    base_url = (getattr(settings, 'zapi_base_url', '') or current_app.config.get('ZAPI_BASE_URL', 'https://api.z-api.io')).strip().rstrip('/')
+    base_url = sanitize_zapi_base_url((getattr(settings, 'zapi_base_url', '') or current_app.config.get('ZAPI_BASE_URL', 'https://api.z-api.io')))
     sender_number = (getattr(settings, 'zapi_sender_number', '') or current_app.config.get('WHATSAPP_SENDER_NUMBER', '')).strip()
     enabled = bool(getattr(settings, 'zapi_enabled', False) or current_app.config.get('ZAPI_ENABLED') == '1')
     delay_seconds = int(getattr(settings, 'zapi_delay_seconds', 4) or 4)
@@ -113,13 +125,42 @@ def send_test_message(phone: str, message: str):
     return _post_send_text(phone=phone, message=message)
 
 
+def render_campaign_message(template: str, contact, settings=None, site_url: str = '') -> str:
+    settings = settings or _settings()
+    content = str(template or '').strip()
+    if not content:
+        return ''
+
+    wedding_date = ''
+    if settings and getattr(settings, 'wedding_date', None):
+        wedding_date = settings.wedding_date.strftime('%d/%m/%Y')
+
+    replacements = {
+        '%contato%': (getattr(contact, 'name', '') or '').strip(),
+        '%nome_noivos%': (getattr(settings, 'couple_names', '') or '').strip() if settings else '',
+        '%data_casamento%': wedding_date,
+        '%horario_casamento%': (getattr(settings, 'wedding_time', '') or '').strip() if settings else '',
+        '%local_casamento%': (getattr(settings, 'wedding_location_name', '') or '').strip() if settings else '',
+        '%endereco_casamento%': (getattr(settings, 'wedding_address', '') or '').strip() if settings else '',
+        '%cidade_casamento%': (getattr(settings, 'wedding_city', '') or '').strip() if settings else '',
+        '%rota_url%': (getattr(settings, 'route_url', '') or '').strip() if settings else '',
+        '%site_url%': (site_url or '').strip(),
+    }
+    for key, value in replacements.items():
+        content = content.replace(key, value)
+
+    content = re.sub(r'\n{3,}', '\n\n', content).strip()
+    return content
+
+
 def _dispatch_response_text(data: dict) -> str:
     return serialize_payload(data)
 
 
-def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None = None):
+def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None = None, send_scope: str = 'unsent', settings=None, site_url: str = ''):
     validate_whatsapp_config()
     results = []
+    settings = settings or _settings()
 
     for contact in contacts:
         if tag_filter and tag_filter != 'todos' and (contact.tag or '').strip().lower() != tag_filter.strip().lower():
@@ -127,7 +168,13 @@ def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None 
             continue
 
         existing = WhatsAppDispatch.query.filter_by(campaign_id=campaign.id, contact_id=contact.id).first()
-        if existing and existing.status == 'sent':
+        if send_scope == 'unsent' and existing:
+            results.append({'contact': contact, 'status': 'skipped', 'reason': 'already_processed'})
+            continue
+        if send_scope == 'errors' and (not existing or existing.status != 'error'):
+            results.append({'contact': contact, 'status': 'skipped', 'reason': 'not_error'})
+            continue
+        if send_scope == 'all' and existing and existing.status == 'sent':
             results.append({'contact': contact, 'status': 'skipped', 'reason': 'already_sent'})
             continue
 
@@ -136,8 +183,9 @@ def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None 
             db.session.add(existing)
 
         existing.phone_sent = normalize_whatsapp_phone(contact.phone)
+        personalized_message = render_campaign_message(campaign.message, contact=contact, settings=settings, site_url=site_url)
         try:
-            response = _post_send_text(phone=contact.phone, message=campaign.message)
+            response = _post_send_text(phone=contact.phone, message=personalized_message)
             existing.status = 'sent'
             existing.sent_at = datetime.utcnow()
             existing.provider_message_id = response.get('message_id', '')

@@ -1,17 +1,16 @@
 {% extends 'admin/base.html' %}
 {% block admin_content %}
-<div class="admin-header"><h1>Contatos</h1><p>Base para disparos e organização dos convidados.</p></div>
+<div class="admin-header"><h1>Contatos</h1><p>Base oficial para os disparos do WhatsApp.</p></div>
 <form class="section-card stack-form" method="post">
-  <label>Nome<input name="name" required></label>
-  <label>Telefone<input name="phone" required data-phone-mask placeholder="(45) 98818-6464"></label>
-  <small class="admin-helper-inline">O sistema salva o telefone limpo para envio e mostra formatado na listagem.</small>
-  <label>E-mail<input name="email"></label>
-  <label>Tag<input name="tag" value="convidado"></label>
+  <label>Nome do contato ou casal<input name="name" required placeholder="Kevin & Anita"></label>
+  <label>Telefone para envio<input name="phone" required inputmode="numeric" placeholder="5545999999999"></label>
+  <small class="admin-helper-inline">Cadastre no padrão 55 + DDD + número, somente números. Exemplo: 55459988186464.</small>
+  <label>Tag<input name="tag" value="convidado" placeholder="família, padrinhos, convidados"></label>
   <button class="btn btn-primary">Salvar contato</button>
 </form>
-<div class="section-card"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Tag</th></tr></thead><tbody>
+<div class="section-card"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone para envio</th><th>Visual</th><th>Tag</th></tr></thead><tbody>
 {% for item in contacts %}
-<tr><td>{{ item.name }}</td><td>{{ item.phone|phone_br }}</td><td>{{ item.email }}</td><td>{{ item.tag }}</td></tr>
+<tr><td>{{ item.name }}</td><td>{{ item.phone }}</td><td>{{ item.phone|phone_br }}</td><td>{{ item.tag }}</td></tr>
 {% else %}<tr><td colspan="4">Nenhum contato ainda.</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% endblock %}

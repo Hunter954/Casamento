@@ -37,6 +37,7 @@
     <label>Cor destaque<input type="color" name="theme_accent" value="{{ settings.theme_accent }}"></label>
   </div>
   <label>Template do WhatsApp<textarea name="whatsapp_message_template">{{ settings.whatsapp_message_template }}</textarea></label>
+  <p class="admin-helper-text">Você pode usar placeholders como %contato%, %nome_noivos%, %site_url%, %data_casamento%, %horario_casamento%, %local_casamento%, %endereco_casamento%, %cidade_casamento% e %rota_url%.</p>
 
   {% if settings.hero_image %}
   <div class="admin-thumb-preview">
@@ -84,10 +85,10 @@
         <input name="zapi_sender_number" inputmode="numeric" value="{{ settings.zapi_sender_number or '' }}" placeholder="5545988186464">
         <small class="admin-helper-inline">Use somente números no padrão 55 + DDD + número.</small>
       </label>
-      <label>Base URL<input name="zapi_base_url" value="{{ settings.zapi_base_url or 'https://api.z-api.io' }}"></label>
+      <label>Base URL<input name="zapi_base_url" value="{{ settings.zapi_base_url or 'https://api.z-api.io' }}" placeholder="https://api.z-api.io"></label>
       <label>Delay entre mensagens (1 a 15s)<input type="number" min="1" max="15" name="zapi_delay_seconds" value="{{ settings.zapi_delay_seconds or 4 }}"></label>
     </div>
-    <p class="admin-helper-text">Salve a configuração e depois use o teste abaixo. A campanha usa os contatos cadastrados no painel e envia pela rota oficial da sua instância Z-API.</p>
+    <p class="admin-helper-text">Salve a configuração e depois use o teste abaixo. A campanha usa os contatos cadastrados no painel e envia pela rota oficial da sua instância Z-API. No campo Base URL use apenas <strong>https://api.z-api.io</strong>.</p>
     <div class="whatsapp-test-box stack-form compact-stack">
       <div class="admin-section-head">
         <div>

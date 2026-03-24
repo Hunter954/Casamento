@@ -1,6 +1,6 @@
 {% extends 'admin/base.html' %}
 {% block admin_content %}
-<div class="admin-header"><h1>Campanhas WhatsApp</h1><p>Crie campanhas, filtre por tag e acompanhe o retorno dos envios da Z-API.</p></div>
+<div class="admin-header"><h1>Campanhas WhatsApp</h1><p>Criar campanha não dispara sozinho. Você salva primeiro e envia quando quiser.</p></div>
 
 <div class="stats-grid whatsapp-mini-stats">
   <div class="stat-card"><span>Contatos cadastrados</span><strong>{{ contacts|length }}</strong></div>
@@ -25,7 +25,10 @@
         {% endfor %}
       </select>
     </label>
-    <label class="full-width">Mensagem<textarea name="message" required placeholder="{{ settings.whatsapp_message_template if settings else '' }}">{{ settings.whatsapp_message_template if settings else '' }}</textarea></label>
+    <label class="full-width">Mensagem<textarea name="message" required placeholder="Olá %contato%,\n\n{{ settings.whatsapp_message_template if settings else '' }}">{{ settings.whatsapp_message_template if settings else '' }}</textarea></label>
+  </div>
+  <div class="admin-helper-text">
+    Placeholders disponíveis: <strong>%contato%</strong>, <strong>%nome_noivos%</strong>, <strong>%site_url%</strong>, <strong>%data_casamento%</strong>, <strong>%horario_casamento%</strong>, <strong>%local_casamento%</strong>, <strong>%endereco_casamento%</strong>, <strong>%cidade_casamento%</strong> e <strong>%rota_url%</strong>.
   </div>
   <button class="btn btn-primary">Criar campanha</button>
 </form>
@@ -37,29 +40,33 @@
       <h2>Campanhas salvas</h2>
     </div>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>Título</th><th>Tag</th><th>Mensagem</th><th>Resultados</th><th>Ações</th></tr></thead><tbody>
+  <div class="table-wrap"><table><thead><tr><th>Título</th><th>Tag</th><th>Mensagem</th><th>Fila</th><th>Ações</th></tr></thead><tbody>
     {% for item in campaigns %}
+    {% set metrics = campaign_metrics.get(item.id, {}) %}
     <tr>
       <td>
         <strong>{{ item.title }}</strong><br>
         <small>{{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else '' }}</small>
       </td>
       <td>{{ 'Todos os contatos' if item.target_tag == 'todos' else item.target_tag }}</td>
-      <td>{{ item.message }}</td>
+      <td><div class="payload-preview">{{ item.message }}</div></td>
       <td>
-        {% set sent_count = item.dispatches|selectattr('status', 'equalto', 'sent')|list|length %}
-        {% set error_count = item.dispatches|selectattr('status', 'equalto', 'error')|list|length %}
-        {% set pending_count = item.dispatches|selectattr('status', 'equalto', 'pending')|list|length %}
         <div class="admin-tag-row">
-          <span class="admin-tag tag-success">{{ sent_count }} enviados</span>
-          <span class="admin-tag tag-warning">{{ error_count }} erros</span>
-          <span class="admin-tag tag-neutral">{{ pending_count }} pendentes</span>
+          <span class="admin-tag tag-success">{{ metrics.get('sent', 0) }} enviados</span>
+          <span class="admin-tag tag-warning">{{ metrics.get('errors', 0) }} erros</span>
+          <span class="admin-tag tag-neutral">{{ metrics.get('pending', 0) }} faltam</span>
+          <span class="admin-tag tag-neutral">{{ metrics.get('eligible', 0) }} elegíveis</span>
         </div>
       </td>
       <td>
         <div class="admin-card-actions">
           <form method="post" action="{{ url_for('admin.trigger_campaign', campaign_id=item.id) }}">
-            <button class="btn btn-soft">Disparar agora</button>
+            <input type="hidden" name="send_scope" value="unsent">
+            <button class="btn btn-soft">Enviar pendentes</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.trigger_campaign', campaign_id=item.id) }}">
+            <input type="hidden" name="send_scope" value="errors">
+            <button class="btn btn-soft">Reenviar erros</button>
           </form>
           <form method="post" action="{{ url_for('admin.delete_campaign', campaign_id=item.id) }}" onsubmit="return confirm('Excluir esta campanha?')">
             <button class="btn btn-danger-outline">Excluir</button>
@@ -100,7 +107,6 @@
   </tbody></table></div>
 </div>
 
-
 <div class="section-card">
   <div class="admin-section-head">
     <div>
@@ -122,5 +128,4 @@
     {% endfor %}
   </tbody></table></div>
 </div>
-
 {% endblock %}

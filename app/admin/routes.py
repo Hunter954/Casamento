@@ -15,7 +15,7 @@ from app.models import (
     WhatsAppWebhookLog,
 )
 from app.utils import save_upload, parse_datetime, format_phone, normalize_phone_digits
-from app.services.whatsapp import send_campaign_messages, send_test_message, WhatsAppConfigError
+from app.services.whatsapp import send_campaign_messages, send_test_message, WhatsAppConfigError, sanitize_zapi_base_url
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -108,7 +108,7 @@ def settings():
         settings.zapi_token = request.form.get('zapi_token', '').strip()
         settings.zapi_client_token = request.form.get('zapi_client_token', '').strip()
         settings.zapi_sender_number = normalize_phone_digits(request.form.get('zapi_sender_number', '').strip())
-        settings.zapi_base_url = request.form.get('zapi_base_url', 'https://api.z-api.io').strip() or 'https://api.z-api.io'
+        settings.zapi_base_url = sanitize_zapi_base_url(request.form.get('zapi_base_url', 'https://api.z-api.io'))
         settings.zapi_delay_seconds = int(request.form.get('zapi_delay_seconds', 4) or 4)
 
         hero_upload = request.files.get('hero_image')
@@ -258,11 +258,16 @@ def delete_purchase(purchase_id):
 @login_required
 def contacts():
     if request.method == 'POST':
+        phone = normalize_phone_digits(request.form.get('phone', ''))
+        if len(phone) < 12 or not phone.startswith('55'):
+            flash('Cadastre o telefone no formato 55DDDNUMERO. Exemplo: 5545999999999.', 'danger')
+            return redirect(url_for('admin.contacts'))
+
         contact = ContactLead(
-            name=request.form.get('name', ''),
-            phone=normalize_phone_digits(request.form.get('phone', '')),
-            email=request.form.get('email', ''),
-            tag=request.form.get('tag', 'convidado'),
+            name=request.form.get('name', '').strip(),
+            phone=phone,
+            email='',
+            tag=request.form.get('tag', 'convidado').strip() or 'convidado',
         )
         db.session.add(contact)
         db.session.commit()
@@ -284,15 +289,32 @@ def campaigns():
         )
         db.session.add(campaign)
         db.session.commit()
-        flash('Campanha criada.', 'success')
+        flash('Campanha criada. Ela não dispara sozinha: use o botão de envio quando quiser.', 'success')
         return redirect(url_for('admin.campaigns'))
 
     campaigns = WhatsAppCampaign.query.order_by(WhatsAppCampaign.created_at.desc()).all()
     contacts = ContactLead.query.order_by(ContactLead.created_at.desc()).all()
-    dispatches = WhatsAppDispatch.query.order_by(WhatsAppDispatch.created_at.desc()).limit(50).all()
+    dispatches = WhatsAppDispatch.query.order_by(WhatsAppDispatch.created_at.desc()).limit(80).all()
     webhook_logs = WhatsAppWebhookLog.query.order_by(WhatsAppWebhookLog.created_at.desc()).limit(20).all()
     tags = _tag_options()
     settings = SiteSettings.query.first()
+
+    campaign_metrics = {}
+    for item in campaigns:
+        eligible_contacts = [c for c in contacts if item.target_tag == 'todos' or (c.tag or '').strip().lower() == item.target_tag.strip().lower()]
+        eligible_ids = {c.id for c in eligible_contacts}
+        relevant_dispatches = [d for d in item.dispatches if d.contact_id in eligible_ids]
+        sent_count = len([d for d in relevant_dispatches if d.status == 'sent'])
+        error_count = len([d for d in relevant_dispatches if d.status == 'error'])
+        processed_ids = {d.contact_id for d in relevant_dispatches}
+        pending_count = max(0, len(eligible_ids - processed_ids))
+        campaign_metrics[item.id] = {
+            'eligible': len(eligible_contacts),
+            'sent': sent_count,
+            'errors': error_count,
+            'pending': pending_count,
+        }
+
     return render_template(
         'admin/campaigns.html',
         campaigns=campaigns,
@@ -301,6 +323,7 @@ def campaigns():
         tags=tags,
         settings=settings,
         webhook_logs=webhook_logs,
+        campaign_metrics=campaign_metrics,
     )
 
 
@@ -308,13 +331,28 @@ def campaigns():
 @login_required
 def trigger_campaign(campaign_id):
     campaign = WhatsAppCampaign.query.get_or_404(campaign_id)
-    contacts = ContactLead.query.all()
+    contacts = ContactLead.query.order_by(ContactLead.created_at.asc()).all()
+    send_scope = (request.form.get('send_scope', 'unsent') or 'unsent').strip()
+    site_url = request.url_root.rstrip('/')
+    settings = SiteSettings.query.first()
     try:
-        results = send_campaign_messages(campaign, contacts, tag_filter=campaign.target_tag)
+        results = send_campaign_messages(
+            campaign,
+            contacts,
+            tag_filter=campaign.target_tag,
+            send_scope=send_scope,
+            settings=settings,
+            site_url=site_url,
+        )
         sent = len([r for r in results if r['status'] == 'sent'])
         skipped = len([r for r in results if r['status'] == 'skipped'])
         errors = len([r for r in results if r['status'] == 'error'])
-        flash(f'Campanha processada. Enviados: {sent} | Ignorados: {skipped} | Erros: {errors}.', 'success' if errors == 0 else 'warning')
+        scope_label = {
+            'unsent': 'pendentes',
+            'errors': 'com erro',
+            'all': 'selecionados',
+        }.get(send_scope, 'selecionados')
+        flash(f'Campanha processada para contatos {scope_label}. Enviados: {sent} | Ignorados: {skipped} | Erros: {errors}.', 'success' if errors == 0 else 'warning')
     except WhatsAppConfigError as exc:
         flash(str(exc), 'danger')
     return redirect(url_for('admin.campaigns'))
