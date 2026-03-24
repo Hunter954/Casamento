@@ -7,7 +7,7 @@
     <div class="section-title gifts-page-title"><span>Presentes</span><h1>Escolha um presente especial</h1></div>
     <div class="gift-grid gifts-catalog-grid">
       {% for gift in gifts %}
-      {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
+      {% set gift_image = media_url(gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
       <article class="gift-item gift-catalog-card {% if gift.is_sold_out %}is-sold-out{% endif %}">
         <div class="gift-thumb gift-catalog-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
         <div class="gift-content">

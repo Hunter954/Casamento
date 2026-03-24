@@ -92,7 +92,7 @@
     </div>
     <div class="gift-grid preview-grid">
       {% for gift in gifts %}
-      {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
+      {% set gift_image = media_url(gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
       <article class="gift-item preview-card">
         <div class="gift-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>
         <div class="gift-content">

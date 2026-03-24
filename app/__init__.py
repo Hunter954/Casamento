@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, send_from_directory, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -66,10 +66,24 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
 
+
+    @app.route('/media/<path:filename>')
+    def uploaded_media(filename):
+        return send_from_directory(app.config['UPLOAD_DIR'], filename)
+
     @app.context_processor
     def inject_global_settings():
         settings = SiteSettings.query.first()
-        return {'site_settings': settings}
+
+        def media_url(file_path):
+            if not file_path:
+                return ''
+            if str(file_path).startswith(('http://', 'https://', '/')):
+                return file_path
+            filename = str(file_path).split('/')[-1]
+            return url_for('uploaded_media', filename=filename)
+
+        return {'site_settings': settings, 'media_url': media_url}
 
     with app.app_context():
         db.create_all()

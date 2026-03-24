@@ -14,8 +14,8 @@
       --primary: {{ site_settings.theme_primary if site_settings else '#7a3144' }};
       --secondary: {{ site_settings.theme_secondary if site_settings else '#f7d7df' }};
       --accent: {{ site_settings.theme_accent if site_settings else '#f14d78' }};
-      --hero-image: url('{{ url_for('static', filename=site_settings.hero_image) if site_settings and site_settings.hero_image else 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1600&auto=format&fit=crop' }}');
-      --banner-image: url('{{ url_for('static', filename=site_settings.gift_banner_image) if site_settings and site_settings.gift_banner_image else 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=1200&auto=format&fit=crop' }}');
+      --hero-image: url('{{ media_url(site_settings.hero_image) if site_settings and site_settings.hero_image else 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1600&auto=format&fit=crop' }}');
+      --banner-image: url('{{ media_url(site_settings.gift_banner_image) if site_settings and site_settings.gift_banner_image else 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=1200&auto=format&fit=crop' }}');
     }
   </style>
 </head>

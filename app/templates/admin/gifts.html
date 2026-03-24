@@ -39,7 +39,7 @@
   {% if edit_gift and edit_gift.image_url %}
   <div class="admin-thumb-preview">
     <span>Imagem atual</span>
-    <img src="{{ url_for('static', filename=edit_gift.image_url) }}" alt="Imagem atual do presente">
+    <img src="{{ media_url(edit_gift.image_url) }}" alt="Imagem atual do presente">
   </div>
   {% endif %}
 
@@ -56,7 +56,7 @@
 
   <div class="admin-gift-list">
     {% for gift in gifts %}
-    {% set gift_image = url_for('static', filename=gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
+    {% set gift_image = media_url(gift.image_url) if gift.image_url and not gift.image_url.startswith('http') else gift.image_url %}
     <article class="admin-gift-card {% if gift.is_sold_out %}is-sold-out{% endif %}">
       <div class="admin-gift-card-top">
         <div class="admin-gift-thumb" {% if gift_image %}style="background-image:url('{{ gift_image }}')"{% endif %}></div>

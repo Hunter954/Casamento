@@ -37,6 +37,19 @@
     <label>Cor destaque<input type="color" name="theme_accent" value="{{ settings.theme_accent }}"></label>
   </div>
   <label>Template do WhatsApp<textarea name="whatsapp_message_template">{{ settings.whatsapp_message_template }}</textarea></label>
+
+  {% if settings.hero_image %}
+  <div class="admin-thumb-preview">
+    <span>Imagem atual do topo</span>
+    <img src="{{ media_url(settings.hero_image) }}" alt="Imagem atual do topo">
+  </div>
+  {% endif %}
+  {% if settings.gift_banner_image %}
+  <div class="admin-thumb-preview">
+    <span>Imagem atual do banner de presentes</span>
+    <img src="{{ media_url(settings.gift_banner_image) }}" alt="Imagem atual do banner de presentes">
+  </div>
+  {% endif %}
   <label class="checkline"><input type="checkbox" name="allow_guestbook" {% if settings.allow_guestbook %}checked{% endif %}> Permitir mural de recados</label>
   <label class="checkline"><input type="checkbox" name="require_guestbook_approval" {% if settings.require_guestbook_approval %}checked{% endif %}> Exigir aprovação dos recados</label>
 
