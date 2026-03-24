@@ -277,6 +277,36 @@ def contacts():
     return render_template('admin/contacts.html', contacts=contacts)
 
 
+@admin_bp.route('/contatos/<int:contact_id>/editar', methods=['POST'])
+@login_required
+def edit_contact(contact_id):
+    contact = ContactLead.query.get_or_404(contact_id)
+    phone = normalize_phone_digits(request.form.get('phone', ''))
+
+    if len(phone) < 12 or not phone.startswith('55'):
+        flash('Cadastre o telefone no formato 55DDDNUMERO. Exemplo: 5545999999999.', 'danger')
+        return redirect(url_for('admin.contacts'))
+
+    contact.name = request.form.get('name', '').strip() or contact.name
+    contact.phone = phone
+    contact.tag = request.form.get('tag', 'convidado').strip() or 'convidado'
+    db.session.commit()
+    flash('Contato atualizado com sucesso.', 'success')
+    return redirect(url_for('admin.contacts'))
+
+
+@admin_bp.route('/contatos/<int:contact_id>/excluir', methods=['POST'])
+@login_required
+def delete_contact(contact_id):
+    contact = ContactLead.query.get_or_404(contact_id)
+    for dispatch in contact.dispatches:
+        db.session.delete(dispatch)
+    db.session.delete(contact)
+    db.session.commit()
+    flash('Contato excluído com sucesso.', 'success')
+    return redirect(url_for('admin.contacts'))
+
+
 @admin_bp.route('/campanhas', methods=['GET', 'POST'])
 @login_required
 def campaigns():

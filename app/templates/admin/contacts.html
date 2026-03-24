@@ -8,9 +8,49 @@
   <label>Tag<input name="tag" value="convidado" placeholder="família, padrinhos, convidados"></label>
   <button class="btn btn-primary">Salvar contato</button>
 </form>
-<div class="section-card"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone para envio</th><th>Visual</th><th>Tag</th></tr></thead><tbody>
-{% for item in contacts %}
-<tr><td>{{ item.name }}</td><td>{{ item.phone }}</td><td>{{ item.phone|phone_br }}</td><td>{{ item.tag }}</td></tr>
-{% else %}<tr><td colspan="4">Nenhum contato ainda.</td></tr>{% endfor %}
-</tbody></table></div></div>
+<div class="section-card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Telefone para envio</th>
+          <th>Visual</th>
+          <th>Tag</th>
+          <th style="width: 320px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for item in contacts %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.phone }}</td>
+          <td>{{ item.phone|phone_br }}</td>
+          <td>{{ item.tag }}</td>
+          <td>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <details style="width:100%;">
+                <summary class="btn btn-secondary" style="cursor:pointer; list-style:none; display:inline-flex; align-items:center;">Editar</summary>
+                <form method="post" action="{{ url_for('admin.edit_contact', contact_id=item.id) }}" class="stack-form" style="margin-top:12px; padding:14px; border:1px solid rgba(122,49,68,.12); border-radius:16px; background:#fff7f9;">
+                  <label>Nome do contato ou casal<input name="name" required value="{{ item.name }}"></label>
+                  <label>Telefone para envio<input name="phone" required inputmode="numeric" value="{{ item.phone }}"></label>
+                  <label>Tag<input name="tag" value="{{ item.tag }}"></label>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" type="submit">Salvar alterações</button>
+                  </div>
+                </form>
+              </details>
+              <form method="post" action="{{ url_for('admin.delete_contact', contact_id=item.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este contato?');" style="margin:0;">
+                <button class="btn btn-danger" type="submit">Excluir</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">Nenhum contato ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
