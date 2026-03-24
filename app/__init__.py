@@ -20,7 +20,7 @@ def _sync_schema(app):
     if inspector.has_table('gift_item'):
         gift_columns = {column['name'] for column in inspector.get_columns('gift_item')}
         if 'allow_multiple_purchases' not in gift_columns:
-            db.session.execute(text('ALTER TABLE gift_item ADD COLUMN allow_multiple_purchases BOOLEAN DEFAULT TRUE'))
+            db.session.execute(text("ALTER TABLE gift_item ADD COLUMN allow_multiple_purchases BOOLEAN DEFAULT TRUE"))
             db.session.commit()
 
     if inspector.has_table('site_settings'):
@@ -36,8 +36,7 @@ def _sync_schema(app):
 
 def create_app():
     app = Flask(__name__)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///wedding.db').replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -47,7 +46,6 @@ def create_app():
     app.config['MERCADO_PAGO_ACCESS_TOKEN'] = os.getenv('MERCADO_PAGO_ACCESS_TOKEN', '')
     app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
     app.config['WHATSAPP_SENDER_NUMBER'] = os.getenv('WHATSAPP_SENDER_NUMBER', '')
-    app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 
     os.makedirs(app.config['UPLOAD_DIR'], exist_ok=True)
 
@@ -69,6 +67,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
+
 
     @app.route('/media/<path:filename>')
     def uploaded_media(filename):
