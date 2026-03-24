@@ -32,6 +32,38 @@ def _sync_schema(app):
             db.session.execute(text("ALTER TABLE site_settings ADD COLUMN mercado_pago_access_token TEXT DEFAULT ''"))
         if 'mercado_pago_public_key' not in settings_columns:
             db.session.execute(text("ALTER TABLE site_settings ADD COLUMN mercado_pago_public_key VARCHAR(255) DEFAULT ''"))
+        if 'zapi_enabled' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_enabled BOOLEAN DEFAULT FALSE"))
+        if 'zapi_instance_id' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_instance_id VARCHAR(120) DEFAULT ''"))
+        if 'zapi_token' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_token VARCHAR(255) DEFAULT ''"))
+        if 'zapi_client_token' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_client_token VARCHAR(255) DEFAULT ''"))
+        if 'zapi_sender_number' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_sender_number VARCHAR(40) DEFAULT ''"))
+        if 'zapi_base_url' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_base_url VARCHAR(255) DEFAULT 'https://api.z-api.io'"))
+        if 'zapi_delay_seconds' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN zapi_delay_seconds INTEGER DEFAULT 4"))
+        db.session.commit()
+
+    if inspector.has_table('whatsapp_campaign'):
+        campaign_columns = {column['name'] for column in inspector.get_columns('whatsapp_campaign')}
+        if 'target_tag' not in campaign_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_campaign ADD COLUMN target_tag VARCHAR(80) DEFAULT 'todos'"))
+        db.session.commit()
+
+    if inspector.has_table('whatsapp_dispatch'):
+        dispatch_columns = {column['name'] for column in inspector.get_columns('whatsapp_dispatch')}
+        if 'phone_sent' not in dispatch_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_dispatch ADD COLUMN phone_sent VARCHAR(40) DEFAULT ''"))
+        if 'provider_message_id' not in dispatch_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_dispatch ADD COLUMN provider_message_id VARCHAR(120) DEFAULT ''"))
+        if 'response_body' not in dispatch_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_dispatch ADD COLUMN response_body TEXT DEFAULT ''"))
+        if 'error_message' not in dispatch_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_dispatch ADD COLUMN error_message TEXT DEFAULT ''"))
         db.session.commit()
 
 
@@ -47,6 +79,11 @@ def create_app():
     app.config['MERCADO_PAGO_ACCESS_TOKEN'] = os.getenv('MERCADO_PAGO_ACCESS_TOKEN', '')
     app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
     app.config['WHATSAPP_SENDER_NUMBER'] = os.getenv('WHATSAPP_SENDER_NUMBER', '')
+    app.config['ZAPI_ENABLED'] = os.getenv('ZAPI_ENABLED', '')
+    app.config['ZAPI_INSTANCE_ID'] = os.getenv('ZAPI_INSTANCE_ID', '')
+    app.config['ZAPI_TOKEN'] = os.getenv('ZAPI_TOKEN', '')
+    app.config['ZAPI_CLIENT_TOKEN'] = os.getenv('ZAPI_CLIENT_TOKEN', '')
+    app.config['ZAPI_BASE_URL'] = os.getenv('ZAPI_BASE_URL', 'https://api.z-api.io')
 
     os.makedirs(app.config['UPLOAD_DIR'], exist_ok=True)
 

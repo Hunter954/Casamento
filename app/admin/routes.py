@@ -1,9 +1,20 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
+
 from app import db
-from app.models import AdminUser, SiteSettings, RSVP, GuestbookMessage, GiftItem, GiftPurchase, ContactLead, WhatsAppCampaign
+from app.models import (
+    AdminUser,
+    SiteSettings,
+    RSVP,
+    GuestbookMessage,
+    GiftItem,
+    GiftPurchase,
+    ContactLead,
+    WhatsAppCampaign,
+    WhatsAppDispatch,
+)
 from app.utils import save_upload, parse_datetime, format_phone
-from app.services.whatsapp import send_campaign_messages
+from app.services.whatsapp import send_campaign_messages, send_test_message, WhatsAppConfigError
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -13,6 +24,11 @@ def _to_float(value):
         return float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _tag_options():
+    tags = [tag for (tag,) in db.session.query(ContactLead.tag).distinct().order_by(ContactLead.tag.asc()).all() if tag]
+    return ['todos'] + tags
 
 
 @admin_bp.route('/login', methods=['GET', 'POST'])
@@ -48,6 +64,9 @@ def dashboard():
         'gifts': GiftItem.query.count(),
         'paid': approved_purchases.count(),
         'paid_total': sum(item.amount or 0 for item in approved_purchases.all()),
+        'contacts': ContactLead.query.count(),
+        'campaigns': WhatsAppCampaign.query.count(),
+        'dispatches_sent': WhatsAppDispatch.query.filter_by(status='sent').count(),
     }
     purchases = GiftPurchase.query.order_by(GiftPurchase.created_at.desc()).limit(8).all()
     return render_template('admin/dashboard.html', stats=stats, purchases=purchases)
@@ -83,77 +102,75 @@ def settings():
         settings.mercado_pago_enabled = request.form.get('mercado_pago_enabled') == 'on'
         settings.mercado_pago_access_token = request.form.get('mercado_pago_access_token', '').strip()
         settings.mercado_pago_public_key = request.form.get('mercado_pago_public_key', '').strip()
+        settings.zapi_enabled = request.form.get('zapi_enabled') == 'on'
+        settings.zapi_instance_id = request.form.get('zapi_instance_id', '').strip()
+        settings.zapi_token = request.form.get('zapi_token', '').strip()
+        settings.zapi_client_token = request.form.get('zapi_client_token', '').strip()
+        settings.zapi_sender_number = format_phone(request.form.get('zapi_sender_number', '').strip())
+        settings.zapi_base_url = request.form.get('zapi_base_url', 'https://api.z-api.io').strip() or 'https://api.z-api.io'
+        settings.zapi_delay_seconds = int(request.form.get('zapi_delay_seconds', 4) or 4)
 
-        hero = request.files.get('hero_image')
-        banner = request.files.get('gift_banner_image')
-        hero_path = save_upload(hero)
-        banner_path = save_upload(banner)
-        if hero_path:
-            settings.hero_image = hero_path
-        if banner_path:
-            settings.gift_banner_image = banner_path
+        hero_upload = request.files.get('hero_image')
+        gift_banner_upload = request.files.get('gift_banner_image')
+        if hero_upload and hero_upload.filename:
+            settings.hero_image = save_upload(hero_upload)
+        if gift_banner_upload and gift_banner_upload.filename:
+            settings.gift_banner_image = save_upload(gift_banner_upload)
 
         db.session.commit()
-        flash('Configurações atualizadas.', 'success')
+        flash('Configurações salvas com sucesso.', 'success')
         return redirect(url_for('admin.settings'))
     return render_template('admin/settings.html', settings=settings)
+
+
+@admin_bp.route('/configuracoes/whatsapp/testar', methods=['POST'])
+@login_required
+def test_whatsapp():
+    phone = request.form.get('test_phone', '').strip()
+    message = request.form.get('test_message', '').strip() or 'Teste de integração Z-API enviado pelo painel do site.'
+    try:
+        send_test_message(phone=phone, message=message)
+        flash('Mensagem de teste enviada com sucesso.', 'success')
+    except Exception as exc:
+        flash(f'Falha no teste da Z-API: {exc}', 'danger')
+    return redirect(url_for('admin.settings'))
 
 
 @admin_bp.route('/presentes', methods=['GET', 'POST'])
 @login_required
 def manage_gifts():
     if request.method == 'POST':
-        gift = GiftItem(
-            title=request.form.get('title', '').strip(),
-            description=request.form.get('description', '').strip(),
-            price=_to_float(request.form.get('price', 0)),
-            image_url='',
+        image_path = save_upload(request.files.get('image')) if request.files.get('image') else ''
+        item = GiftItem(
+            title=request.form.get('title', ''),
+            description=request.form.get('description', ''),
+            price=_to_float((request.form.get('price', '') or '').replace('.', '').replace(',', '.')),
+            image_url=image_path,
             active=request.form.get('active') == 'on',
             allow_multiple_purchases=request.form.get('allow_multiple_purchases') == 'on',
         )
-        image_file = request.files.get('image_file')
-        image_path = save_upload(image_file)
-        if image_path:
-            gift.image_url = image_path
-        db.session.add(gift)
+        db.session.add(item)
         db.session.commit()
-        flash('Presente cadastrado.', 'success')
+        flash('Presente cadastrado com sucesso.', 'success')
         return redirect(url_for('admin.manage_gifts'))
     gifts = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
-    return render_template('admin/gifts.html', gifts=gifts, edit_gift=None)
+    return render_template('admin/gifts.html', gifts=gifts)
 
 
-@admin_bp.route('/presentes/<int:gift_id>/editar', methods=['GET', 'POST'])
+@admin_bp.route('/presentes/<int:gift_id>/editar', methods=['POST'])
 @login_required
 def edit_gift(gift_id):
     gift = GiftItem.query.get_or_404(gift_id)
-    if request.method == 'POST':
-        gift.title = request.form.get('title', '').strip()
-        gift.description = request.form.get('description', '').strip()
-        gift.price = _to_float(request.form.get('price', 0))
-        gift.active = request.form.get('active') == 'on'
-        gift.allow_multiple_purchases = request.form.get('allow_multiple_purchases') == 'on'
-
-        image_file = request.files.get('image_file')
-        image_path = save_upload(image_file)
-        if image_path:
-            gift.image_url = image_path
-
-        db.session.commit()
-        flash('Presente atualizado.', 'success')
-        return redirect(url_for('admin.manage_gifts'))
-
-    gifts = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
-    return render_template('admin/gifts.html', gifts=gifts, edit_gift=gift)
-
-
-@admin_bp.route('/presentes/<int:gift_id>/toggle')
-@login_required
-def toggle_gift(gift_id):
-    gift = GiftItem.query.get_or_404(gift_id)
-    gift.active = not gift.active
+    gift.title = request.form.get('title', gift.title)
+    gift.description = request.form.get('description', gift.description)
+    gift.price = _to_float((request.form.get('price', gift.price) or '').replace('.', '').replace(',', '.'))
+    gift.active = request.form.get('active') == 'on'
+    gift.allow_multiple_purchases = request.form.get('allow_multiple_purchases') == 'on'
+    image_upload = request.files.get('image')
+    if image_upload and image_upload.filename:
+        gift.image_url = save_upload(image_upload)
     db.session.commit()
-    flash('Status do presente atualizado.', 'success')
+    flash('Presente atualizado com sucesso.', 'success')
     return redirect(url_for('admin.manage_gifts'))
 
 
@@ -167,7 +184,7 @@ def delete_gift(gift_id):
     return redirect(url_for('admin.manage_gifts'))
 
 
-@admin_bp.route('/rsvps')
+@admin_bp.route('/confirmacoes')
 @login_required
 def manage_rsvps():
     rsvps = RSVP.query.order_by(RSVP.created_at.desc()).all()
@@ -251,17 +268,29 @@ def contacts():
 def campaigns():
     if request.method == 'POST':
         campaign = WhatsAppCampaign(
-            title=request.form.get('title', ''),
-            message=request.form.get('message', ''),
+            title=request.form.get('title', '').strip(),
+            message=request.form.get('message', '').strip(),
             active=True,
+            target_tag=request.form.get('target_tag', 'todos').strip() or 'todos',
         )
         db.session.add(campaign)
         db.session.commit()
         flash('Campanha criada.', 'success')
         return redirect(url_for('admin.campaigns'))
+
     campaigns = WhatsAppCampaign.query.order_by(WhatsAppCampaign.created_at.desc()).all()
-    contacts = ContactLead.query.all()
-    return render_template('admin/campaigns.html', campaigns=campaigns, contacts=contacts)
+    contacts = ContactLead.query.order_by(ContactLead.created_at.desc()).all()
+    dispatches = WhatsAppDispatch.query.order_by(WhatsAppDispatch.created_at.desc()).limit(50).all()
+    tags = _tag_options()
+    settings = SiteSettings.query.first()
+    return render_template(
+        'admin/campaigns.html',
+        campaigns=campaigns,
+        contacts=contacts,
+        dispatches=dispatches,
+        tags=tags,
+        settings=settings,
+    )
 
 
 @admin_bp.route('/campanhas/<int:campaign_id>/disparar', methods=['POST'])
@@ -269,8 +298,24 @@ def campaigns():
 def trigger_campaign(campaign_id):
     campaign = WhatsAppCampaign.query.get_or_404(campaign_id)
     contacts = ContactLead.query.all()
-    results = send_campaign_messages(campaign, contacts)
-    sent = len([r for r in results if r[1] == 'sent'])
-    skipped = len([r for r in results if r[1] == 'skipped'])
-    flash(f'Campanha processada. Enviados: {sent} | Ignorados: {skipped}.', 'success')
+    try:
+        results = send_campaign_messages(campaign, contacts, tag_filter=campaign.target_tag)
+        sent = len([r for r in results if r['status'] == 'sent'])
+        skipped = len([r for r in results if r['status'] == 'skipped'])
+        errors = len([r for r in results if r['status'] == 'error'])
+        flash(f'Campanha processada. Enviados: {sent} | Ignorados: {skipped} | Erros: {errors}.', 'success' if errors == 0 else 'warning')
+    except WhatsAppConfigError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('admin.campaigns'))
+
+
+@admin_bp.route('/campanhas/<int:campaign_id>/excluir', methods=['POST'])
+@login_required
+def delete_campaign(campaign_id):
+    campaign = WhatsAppCampaign.query.get_or_404(campaign_id)
+    for dispatch in campaign.dispatches:
+        db.session.delete(dispatch)
+    db.session.delete(campaign)
+    db.session.commit()
+    flash('Campanha excluída.', 'success')
     return redirect(url_for('admin.campaigns'))

@@ -1,27 +1,100 @@
 {% extends 'admin/base.html' %}
 {% block admin_content %}
-<div class="admin-header"><h1>Campanhas WhatsApp</h1><p>Crie o texto, dispare e evite reenvios para quem já recebeu.</p></div>
-<form class="section-card stack-form" method="post">
-  <label>Título da campanha<input name="title" required></label>
-  <label>Mensagem<textarea name="message" required></textarea></label>
+<div class="admin-header"><h1>Campanhas WhatsApp</h1><p>Crie campanhas, filtre por tag e acompanhe o retorno dos envios da Z-API.</p></div>
+
+<div class="stats-grid whatsapp-mini-stats">
+  <div class="stat-card"><span>Contatos cadastrados</span><strong>{{ contacts|length }}</strong></div>
+  <div class="stat-card"><span>Campanhas criadas</span><strong>{{ campaigns|length }}</strong></div>
+  <div class="stat-card"><span>Envios com sucesso</span><strong>{{ dispatches|selectattr('status', 'equalto', 'sent')|list|length }}</strong></div>
+  <div class="stat-card"><span>Falhas recentes</span><strong>{{ dispatches|selectattr('status', 'equalto', 'error')|list|length }}</strong></div>
+</div>
+
+<form class="section-card stack-form admin-form-card" method="post">
+  <div class="admin-section-head">
+    <div>
+      <span class="admin-kicker">Nova campanha</span>
+      <h2>Criar disparo</h2>
+    </div>
+  </div>
+  <div class="admin-form-grid two-cols">
+    <label>Título da campanha<input name="title" required></label>
+    <label>Tag de destino
+      <select name="target_tag">
+        {% for tag in tags %}
+        <option value="{{ tag }}">{{ 'Todos os contatos' if tag == 'todos' else tag }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="full-width">Mensagem<textarea name="message" required placeholder="{{ settings.whatsapp_message_template if settings else '' }}">{{ settings.whatsapp_message_template if settings else '' }}</textarea></label>
+  </div>
   <button class="btn btn-primary">Criar campanha</button>
 </form>
+
 <div class="section-card">
-  <h2>Campanhas salvas</h2>
-  <div class="table-wrap"><table><thead><tr><th>Título</th><th>Mensagem</th><th>Contatos</th><th></th></tr></thead><tbody>
+  <div class="admin-section-head">
+    <div>
+      <span class="admin-kicker">Disparos</span>
+      <h2>Campanhas salvas</h2>
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Título</th><th>Tag</th><th>Mensagem</th><th>Resultados</th><th>Ações</th></tr></thead><tbody>
     {% for item in campaigns %}
     <tr>
-      <td>{{ item.title }}</td>
-      <td>{{ item.message }}</td>
-      <td>{{ contacts|length }}</td>
       <td>
-        <form method="post" action="{{ url_for('admin.trigger_campaign', campaign_id=item.id) }}">
-          <button class="btn btn-soft">Disparar agora</button>
-        </form>
+        <strong>{{ item.title }}</strong><br>
+        <small>{{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else '' }}</small>
+      </td>
+      <td>{{ 'Todos os contatos' if item.target_tag == 'todos' else item.target_tag }}</td>
+      <td>{{ item.message }}</td>
+      <td>
+        {% set sent_count = item.dispatches|selectattr('status', 'equalto', 'sent')|list|length %}
+        {% set error_count = item.dispatches|selectattr('status', 'equalto', 'error')|list|length %}
+        {% set pending_count = item.dispatches|selectattr('status', 'equalto', 'pending')|list|length %}
+        <div class="admin-tag-row">
+          <span class="admin-tag tag-success">{{ sent_count }} enviados</span>
+          <span class="admin-tag tag-warning">{{ error_count }} erros</span>
+          <span class="admin-tag tag-neutral">{{ pending_count }} pendentes</span>
+        </div>
+      </td>
+      <td>
+        <div class="admin-card-actions">
+          <form method="post" action="{{ url_for('admin.trigger_campaign', campaign_id=item.id) }}">
+            <button class="btn btn-soft">Disparar agora</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.delete_campaign', campaign_id=item.id) }}" onsubmit="return confirm('Excluir esta campanha?')">
+            <button class="btn btn-danger-outline">Excluir</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="4">Nenhuma campanha criada.</td></tr>
+    <tr><td colspan="5">Nenhuma campanha criada.</td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</div>
+
+<div class="section-card">
+  <div class="admin-section-head">
+    <div>
+      <span class="admin-kicker">Log recente</span>
+      <h2>Últimos envios</h2>
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Contato</th><th>Telefone enviado</th><th>Campanha</th><th>Status</th><th>Detalhe</th></tr></thead><tbody>
+    {% for item in dispatches %}
+    <tr>
+      <td>{{ item.contact.name if item.contact else '-' }}</td>
+      <td>{{ item.phone_sent or (item.contact.phone if item.contact else '-') }}</td>
+      <td>{{ item.campaign.title if item.campaign else '-' }}</td>
+      <td>
+        <span class="admin-tag {% if item.status == 'sent' %}tag-success{% elif item.status == 'error' %}tag-warning{% else %}tag-neutral{% endif %}">
+          {{ item.status }}
+        </span>
+      </td>
+      <td>{% if item.error_message %}{{ item.error_message }}{% elif item.sent_at %}{{ item.sent_at.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Nenhum envio registrado ainda.</td></tr>
     {% endfor %}
   </tbody></table></div>
 </div>

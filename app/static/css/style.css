@@ -6,3 +6,8 @@
 @media (max-width:900px){.admin-form-grid.two-cols,.color-row{grid-template-columns:1fr}.admin-gift-card-top{grid-template-columns:1fr}.admin-gift-thumb{height:220px}.admin-gift-title-row,.admin-message-head,.admin-section-head{display:grid}.admin-section-head .btn{width:100%}}
 
 .section-actions-center{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px}
+
+.whatsapp-test-box{padding:16px;border-radius:22px;background:#fff;border:1px solid rgba(122,49,68,.08)}
+.compact-stack textarea{min-height:110px}
+.whatsapp-mini-stats{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){.whatsapp-mini-stats{grid-template-columns:repeat(2,1fr)}}

@@ -49,6 +49,13 @@ class SiteSettings(TimestampMixin, db.Model):
     mercado_pago_enabled = db.Column(db.Boolean, default=False)
     mercado_pago_access_token = db.Column(db.Text, default='')
     mercado_pago_public_key = db.Column(db.String(255), default='')
+    zapi_enabled = db.Column(db.Boolean, default=False)
+    zapi_instance_id = db.Column(db.String(120), default='')
+    zapi_token = db.Column(db.String(255), default='')
+    zapi_client_token = db.Column(db.String(255), default='')
+    zapi_sender_number = db.Column(db.String(40), default='')
+    zapi_base_url = db.Column(db.String(255), default='https://api.z-api.io')
+    zapi_delay_seconds = db.Column(db.Integer, default=4)
 
 
 class RSVP(TimestampMixin, db.Model):
@@ -124,6 +131,7 @@ class WhatsAppCampaign(TimestampMixin, db.Model):
     title = db.Column(db.String(180), nullable=False)
     message = db.Column(db.Text, nullable=False)
     active = db.Column(db.Boolean, default=True)
+    target_tag = db.Column(db.String(80), default='todos')
 
 
 class WhatsAppDispatch(TimestampMixin, db.Model):
@@ -133,5 +141,9 @@ class WhatsAppDispatch(TimestampMixin, db.Model):
     contact_id = db.Column(db.Integer, db.ForeignKey('contact_lead.id'))
     status = db.Column(db.String(30), default='pending')
     sent_at = db.Column(db.DateTime, nullable=True)
+    phone_sent = db.Column(db.String(40), default='')
+    provider_message_id = db.Column(db.String(120), default='')
+    response_body = db.Column(db.Text, default='')
+    error_message = db.Column(db.Text, default='')
     campaign = db.relationship('WhatsAppCampaign', backref='dispatches')
     contact = db.relationship('ContactLead', backref='dispatches')

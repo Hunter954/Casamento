@@ -68,6 +68,39 @@
     <p class="admin-helper-text">Com essa configuração preenchida, o checkout passa a criar a preferência real do Mercado Pago direto pelo painel admin, sem depender de variável manual no Railway.</p>
   </div>
 
+  <div class="integration-box top-gap">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">WhatsApp</span>
+        <h2>Z-API</h2>
+      </div>
+    </div>
+    <label class="checkline"><input type="checkbox" name="zapi_enabled" {% if settings.zapi_enabled %}checked{% endif %}> Ativar integração do WhatsApp via Z-API</label>
+    <div class="admin-form-grid two-cols">
+      <label>Instance ID<input name="zapi_instance_id" value="{{ settings.zapi_instance_id or '' }}" placeholder="sua-instance"></label>
+      <label>Token<input name="zapi_token" value="{{ settings.zapi_token or '' }}" placeholder="token da instância"></label>
+      <label>Client-Token<input name="zapi_client_token" value="{{ settings.zapi_client_token or '' }}" placeholder="client-token"></label>
+      <label>Número remetente<input name="zapi_sender_number" data-phone-mask value="{{ settings.zapi_sender_number|phone_br if settings.zapi_sender_number else '' }}" placeholder="(45) 98818-6464"></label>
+      <label>Base URL<input name="zapi_base_url" value="{{ settings.zapi_base_url or 'https://api.z-api.io' }}"></label>
+      <label>Delay entre mensagens (1 a 15s)<input type="number" min="1" max="15" name="zapi_delay_seconds" value="{{ settings.zapi_delay_seconds or 4 }}"></label>
+    </div>
+    <p class="admin-helper-text">Salve a configuração e depois use o teste abaixo. A campanha usa os contatos cadastrados no painel e envia pela rota oficial da sua instância Z-API.</p>
+    <div class="whatsapp-test-box stack-form compact-stack">
+      <div class="admin-section-head">
+        <div>
+          <span class="admin-kicker">Teste rápido</span>
+          <h2>Mensagem de teste</h2>
+        </div>
+      </div>
+      <div class="admin-form-grid two-cols">
+        <label>Número para teste<input name="test_phone" data-phone-mask placeholder="(45) 98818-6464"></label>
+        <label>Mensagem<textarea name="test_message" placeholder="Olá! Esse é um teste da Z-API no site."></textarea></label>
+      </div>
+      <button class="btn btn-soft" formaction="{{ url_for('admin.test_whatsapp') }}" formmethod="post">Enviar teste</button>
+    </div>
+  </div>
+
+
   <button class="btn btn-primary">Salvar alterações</button>
 </form>
 {% endblock %}
