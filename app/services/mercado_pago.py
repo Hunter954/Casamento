@@ -1,6 +1,15 @@
+import uuid
 import requests
 from flask import current_app
 from app.models import SiteSettings
+
+
+class MercadoPagoError(Exception):
+    def __init__(self, message, status_code=None, payload=None):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.payload = payload or {}
 
 
 class MercadoPagoService:
@@ -26,6 +35,22 @@ class MercadoPagoService:
         return bool(cls.get_access_token())
 
     @classmethod
+    def _extract_api_error(cls, response):
+        try:
+            data = response.json()
+        except Exception:
+            data = {}
+
+        message = (
+            data.get('message')
+            or data.get('error_description')
+            or data.get('error')
+            or response.text
+            or 'Falha ao comunicar com o Mercado Pago.'
+        )
+        return message[:500], data
+
+    @classmethod
     def create_preference(cls, purchase, gift_title, success_url, pending_url, failure_url, notification_url):
         if not cls.is_enabled():
             return {
@@ -33,6 +58,10 @@ class MercadoPagoService:
                 'sandbox_url': '#',
                 'reference': f'LOCAL-{purchase.id}',
             }
+
+        access_token = cls.get_access_token()
+        if not access_token:
+            raise MercadoPagoError('Access Token do Mercado Pago não configurado.')
 
         payload = {
             'items': [{
@@ -55,15 +84,31 @@ class MercadoPagoService:
             'notification_url': notification_url,
         }
         headers = {
-            'Authorization': f"Bearer {cls.get_access_token()}",
+            'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json',
+            'X-Idempotency-Key': str(uuid.uuid4()),
         }
-        response = requests.post(cls.PREFERENCES_API_URL, json=payload, headers=headers, timeout=20)
-        response.raise_for_status()
+
+        try:
+            response = requests.post(cls.PREFERENCES_API_URL, json=payload, headers=headers, timeout=30)
+        except requests.RequestException as exc:
+            current_app.logger.exception('Erro de rede ao criar preferência no Mercado Pago.')
+            raise MercadoPagoError('Não foi possível conectar ao Mercado Pago. Verifique a conexão do Railway e tente novamente.') from exc
+
+        if not response.ok:
+            message, data = cls._extract_api_error(response)
+            current_app.logger.error('Mercado Pago preference error [%s]: %s | payload=%s', response.status_code, message, payload)
+            raise MercadoPagoError(message, status_code=response.status_code, payload=data)
+
         data = response.json()
+        checkout_url = data.get('init_point') or data.get('sandbox_init_point') or ''
+        if not checkout_url:
+            current_app.logger.error('Resposta do Mercado Pago sem init_point: %s', data)
+            raise MercadoPagoError('O Mercado Pago respondeu sem a URL de checkout.')
+
         return {
             'enabled': True,
-            'sandbox_url': data.get('init_point') or data.get('sandbox_init_point'),
+            'sandbox_url': checkout_url,
             'reference': data.get('id', ''),
         }
 

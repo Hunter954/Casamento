@@ -1,120 +1,63 @@
-from urllib.parse import quote_plus
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from app import db
-from app.models import SiteSettings, GuestbookMessage, RSVP, GiftItem, GiftPurchase
+from app.models import RSVP, GuestbookMessage, SiteSettings, GiftItem, GiftPurchase
 from app.services.message_ai import generate_loving_message
-from app.services.mercado_pago import MercadoPagoService
+from app.services.mercado_pago import MercadoPagoService, MercadoPagoError
 
 public_bp = Blueprint('public', __name__)
-
-
-def _location_query(settings):
-    parts = []
-    if settings:
-        parts = [
-            getattr(settings, 'wedding_location_name', '') or '',
-            getattr(settings, 'wedding_address', '') or '',
-            getattr(settings, 'wedding_city', '') or '',
-        ]
-    return ', '.join([part.strip() for part in parts if part and part.strip()])
-
-
-def _map_embed_url(settings):
-    if settings and settings.map_embed_url:
-        return settings.map_embed_url
-    query = _location_query(settings)
-    if not query:
-        return ''
-    return f"https://maps.google.com/maps?q={quote_plus(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed"
-
-
-def _route_url(settings):
-    if settings and settings.route_url:
-        return settings.route_url
-    query = _location_query(settings)
-    if not query:
-        return ''
-    return f"https://www.google.com/maps/dir/?api=1&destination={quote_plus(query)}"
-
-
-def _guestbook_cards(messages):
-    cards = []
-    for item in messages:
-        raw_name = (item.author_name or '').strip()
-        parts = [part for part in raw_name.split() if part]
-        if len(parts) >= 2:
-            initials = (parts[0][0] + parts[1][0]).upper()
-        elif parts:
-            initials = parts[0][:2].upper()
-        else:
-            initials = '??'
-        cards.append({
-            'item': item,
-            'initials': initials,
-            'posted_at': item.created_at.strftime('%d/%m/%Y') if item.created_at else '',
-        })
-    return cards
 
 
 @public_bp.route('/')
 def home():
     settings = SiteSettings.query.first()
-    guestbook_messages = GuestbookMessage.query.filter_by(approved=True).order_by(GuestbookMessage.created_at.desc()).limit(8).all()
+    approved_messages = GuestbookMessage.query.filter_by(approved=True).order_by(GuestbookMessage.created_at.desc()).limit(6).all()
     gifts = GiftItem.query.filter_by(active=True).order_by(GiftItem.created_at.desc()).limit(6).all()
-    countdown_target = settings.wedding_date.isoformat() if settings and settings.wedding_date else ''
-    return render_template(
-        'public/home.html',
-        settings=settings,
-        guestbook_messages=_guestbook_cards(guestbook_messages),
-        gifts=gifts,
-        countdown_target=countdown_target,
-        computed_map_embed_url=_map_embed_url(settings),
-        computed_route_url=_route_url(settings),
+    return render_template('public/home.html', settings=settings, approved_messages=approved_messages, gifts=gifts)
+
+
+@public_bp.route('/confirmar-presenca', methods=['POST'])
+def confirm_presence():
+    rsvp = RSVP(
+        guest_name=request.form.get('guest_name', '').strip(),
+        phone=request.form.get('phone', '').strip(),
+        email=request.form.get('email', '').strip(),
+        guests_count=int(request.form.get('guests_count', 1) or 1),
+        attendance=request.form.get('attendance', 'yes'),
+        message=request.form.get('message', '').strip(),
     )
-
-
-@public_bp.route('/confirmar-presenca', methods=['GET', 'POST'])
-def rsvp():
-    if request.method == 'POST':
-        rsvp = RSVP(
-            guest_name=request.form.get('guest_name', '').strip(),
-            phone=request.form.get('phone', '').strip(),
-            email=request.form.get('email', '').strip(),
-            guests_count=int(request.form.get('guests_count', 1) or 1),
-            attendance=request.form.get('attendance', 'yes'),
-            message=request.form.get('message', '').strip(),
-        )
-        db.session.add(rsvp)
-        db.session.commit()
-        flash('Sua resposta foi enviada com carinho. Obrigado!', 'success')
-        return redirect(url_for('public.rsvp'))
-    return render_template('public/rsvp.html')
+    db.session.add(rsvp)
+    db.session.commit()
+    flash('Presença registrada com carinho! 💖', 'success')
+    return redirect(url_for('public.home'))
 
 
 @public_bp.route('/mural', methods=['GET', 'POST'])
 def guestbook():
     settings = SiteSettings.query.first()
+    if settings and not settings.allow_guestbook:
+        flash('O mural está desativado no momento.', 'warning')
+        return redirect(url_for('public.home'))
+
     if request.method == 'POST':
-        if not settings.allow_guestbook:
-            flash('O mural está temporariamente desativado.', 'warning')
-            return redirect(url_for('public.guestbook'))
         message = GuestbookMessage(
             author_name=request.form.get('author_name', '').strip(),
             message=request.form.get('message', '').strip(),
-            approved=not settings.require_guestbook_approval,
+            approved=False if settings and settings.require_guestbook_approval else True,
         )
         db.session.add(message)
         db.session.commit()
-        flash('Recado enviado! Ele aparecerá após aprovação.' if settings.require_guestbook_approval else 'Recado publicado com sucesso!', 'success')
+        flash('Recado enviado com sucesso! Ele aparecerá em breve. ✨', 'success')
         return redirect(url_for('public.guestbook'))
+
     messages = GuestbookMessage.query.filter_by(approved=True).order_by(GuestbookMessage.created_at.desc()).all()
-    return render_template('public/guestbook.html', messages=_guestbook_cards(messages))
+    return render_template('public/guestbook.html', messages=messages, settings=settings)
 
 
 @public_bp.route('/presentes')
 def gifts():
-    gifts = GiftItem.query.filter_by(active=True).order_by(GiftItem.price.asc()).all()
-    return render_template('public/gifts.html', gifts=gifts)
+    settings = SiteSettings.query.first()
+    items = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
+    return render_template('public/gifts.html', items=items, settings=settings)
 
 
 @public_bp.route('/presentes/<int:gift_id>/checkout', methods=['GET', 'POST'])
@@ -140,16 +83,33 @@ def gift_checkout(gift_id):
         db.session.add(purchase)
         db.session.commit()
 
-        pref = MercadoPagoService.create_preference(
-            purchase=purchase,
-            gift_title=gift.title,
-            success_url=url_for('public.checkout_result', status='success', _external=True),
-            pending_url=url_for('public.checkout_result', status='pending', _external=True),
-            failure_url=url_for('public.checkout_result', status='failure', _external=True),
-            notification_url=url_for('api.mercado_pago_webhook', _external=True),
-        )
-        purchase.mercado_pago_preference_id = pref['reference']
-        db.session.commit()
+        try:
+            pref = MercadoPagoService.create_preference(
+                purchase=purchase,
+                gift_title=gift.title,
+                success_url=url_for('public.checkout_result', status='success', _external=True),
+                pending_url=url_for('public.checkout_result', status='pending', _external=True),
+                failure_url=url_for('public.checkout_result', status='failure', _external=True),
+                notification_url=url_for('api.mercado_pago_webhook', _external=True),
+            )
+            purchase.mercado_pago_preference_id = pref['reference']
+            db.session.commit()
+        except MercadoPagoError as exc:
+            db.session.rollback()
+            purchase.status = 'payment_error'
+            db.session.add(purchase)
+            db.session.commit()
+            current_app.logger.exception('Falha ao criar checkout do Mercado Pago para a compra %s', purchase.id)
+            flash(f'Não foi possível iniciar o pagamento no Mercado Pago. Detalhe: {exc.message}', 'danger')
+            return redirect(url_for('public.gift_checkout', gift_id=gift.id))
+        except Exception:
+            db.session.rollback()
+            purchase.status = 'payment_error'
+            db.session.add(purchase)
+            db.session.commit()
+            current_app.logger.exception('Erro inesperado ao iniciar checkout do Mercado Pago para a compra %s', purchase.id)
+            flash('Ocorreu um erro interno ao iniciar o pagamento. Tente novamente em instantes.', 'danger')
+            return redirect(url_for('public.gift_checkout', gift_id=gift.id))
 
         if pref['enabled']:
             return redirect(pref['sandbox_url'])
