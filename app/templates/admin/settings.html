@@ -107,6 +107,46 @@
   </div>
 
 
+
+    <div class="integration-box top-gap">
+      <div class="admin-section-head">
+        <div>
+          <span class="admin-kicker">Diagnóstico</span>
+          <h2>Webhooks da Z-API</h2>
+        </div>
+      </div>
+      <p class="admin-helper-text">Configure estas URLs na Z-API para ter retorno real de envio e status. Todas já estão prontas no site.</p>
+      <div class="admin-form-grid two-cols">
+        <label>Ao enviar<input value="{{ webhook_urls.send }}" readonly onclick="this.select()"></label>
+        <label>Receber status da mensagem<input value="{{ webhook_urls.status }}" readonly onclick="this.select()"></label>
+        <label>Ao receber<input value="{{ webhook_urls.received }}" readonly onclick="this.select()"></label>
+        <label>Ao conectar<input value="{{ webhook_urls.connected }}" readonly onclick="this.select()"></label>
+      </div>
+      <p class="admin-helper-text">Teste de saúde: <strong>{{ webhook_urls.health }}</strong></p>
+    </div>
+
+    <div class="integration-box top-gap">
+      <div class="admin-section-head">
+        <div>
+          <span class="admin-kicker">Retorno da API</span>
+          <h2>Últimos webhooks recebidos</h2>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Evento</th><th>Telefone</th><th>Mensagem ID</th><th>Recebido em</th><th>Payload</th></tr></thead><tbody>
+        {% for item in webhook_logs %}
+        <tr>
+          <td>{{ item.event_type }}</td>
+          <td>{{ item.phone|phone_br if item.phone else '-' }}</td>
+          <td>{{ item.external_message_id or '-' }}</td>
+          <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else '-' }}</td>
+          <td><div class="payload-preview">{{ item.payload }}</div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">Nenhum webhook recebido ainda.</td></tr>
+        {% endfor %}
+      </tbody></table></div>
+    </div>
+
   <button class="btn btn-primary">Salvar alterações</button>
 </form>
 {% endblock %}

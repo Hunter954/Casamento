@@ -114,10 +114,7 @@ def send_test_message(phone: str, message: str):
 
 
 def _dispatch_response_text(data: dict) -> str:
-    try:
-        return json.dumps(data or {}, ensure_ascii=False)
-    except Exception:
-        return str(data or '')
+    return serialize_payload(data)
 
 
 def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None = None):
@@ -155,3 +152,24 @@ def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None 
 
     db.session.commit()
     return results
+
+
+
+def serialize_payload(data):
+    try:
+        return json.dumps(data or {}, ensure_ascii=False)
+    except Exception:
+        return str(data or '')
+
+
+def extract_message_id(data):
+    if not isinstance(data, dict):
+        return ''
+    for key in ('zaapId', 'messageId', 'id', 'message_id'):
+        value = data.get(key)
+        if value:
+            return str(value)
+    nested = data.get('data')
+    if isinstance(nested, dict):
+        return extract_message_id(nested)
+    return ''

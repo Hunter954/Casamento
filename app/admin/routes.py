@@ -12,6 +12,7 @@ from app.models import (
     ContactLead,
     WhatsAppCampaign,
     WhatsAppDispatch,
+    WhatsAppWebhookLog,
 )
 from app.utils import save_upload, parse_datetime, format_phone, normalize_phone_digits
 from app.services.whatsapp import send_campaign_messages, send_test_message, WhatsAppConfigError
@@ -120,7 +121,15 @@ def settings():
         db.session.commit()
         flash('Configurações salvas com sucesso.', 'success')
         return redirect(url_for('admin.settings'))
-    return render_template('admin/settings.html', settings=settings)
+    webhook_urls = {
+        'send': url_for('api.zapi_webhook_send', _external=True),
+        'status': url_for('api.zapi_webhook_status', _external=True),
+        'received': url_for('api.zapi_webhook_received', _external=True),
+        'connected': url_for('api.zapi_webhook_connected', _external=True),
+        'health': url_for('api.zapi_webhook_health', _external=True),
+    }
+    webhook_logs = WhatsAppWebhookLog.query.order_by(WhatsAppWebhookLog.created_at.desc()).limit(12).all()
+    return render_template('admin/settings.html', settings=settings, webhook_urls=webhook_urls, webhook_logs=webhook_logs)
 
 
 @admin_bp.route('/configuracoes/whatsapp/testar', methods=['POST'])
@@ -281,6 +290,7 @@ def campaigns():
     campaigns = WhatsAppCampaign.query.order_by(WhatsAppCampaign.created_at.desc()).all()
     contacts = ContactLead.query.order_by(ContactLead.created_at.desc()).all()
     dispatches = WhatsAppDispatch.query.order_by(WhatsAppDispatch.created_at.desc()).limit(50).all()
+    webhook_logs = WhatsAppWebhookLog.query.order_by(WhatsAppWebhookLog.created_at.desc()).limit(20).all()
     tags = _tag_options()
     settings = SiteSettings.query.first()
     return render_template(
@@ -290,6 +300,7 @@ def campaigns():
         dispatches=dispatches,
         tags=tags,
         settings=settings,
+        webhook_logs=webhook_logs,
     )
 
 

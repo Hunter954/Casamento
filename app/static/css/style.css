@@ -13,3 +13,13 @@
 @media (max-width:900px){.whatsapp-mini-stats{grid-template-columns:repeat(2,1fr)}}
 
 .admin-helper-inline{display:block;margin-top:6px;color:#7b6f77;font-size:.88rem;line-height:1.45;}
+
+
+.payload-preview {
+  max-width: 420px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #6f5a61;
+}

@@ -80,7 +80,7 @@
       <h2>Últimos envios</h2>
     </div>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>Contato</th><th>Telefone enviado</th><th>Campanha</th><th>Status</th><th>Detalhe</th></tr></thead><tbody>
+  <div class="table-wrap"><table><thead><tr><th>Contato</th><th>Telefone enviado</th><th>Campanha</th><th>Status</th><th>Detalhe</th><th>Resposta Z-API</th></tr></thead><tbody>
     {% for item in dispatches %}
     <tr>
       <td>{{ item.contact.name if item.contact else '-' }}</td>
@@ -92,10 +92,35 @@
         </span>
       </td>
       <td>{% if item.error_message %}{{ item.error_message }}{% elif item.sent_at %}{{ item.sent_at.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</td>
+      <td><div class="payload-preview">{{ item.response_body or '-' }}</div></td>
     </tr>
     {% else %}
-    <tr><td colspan="5">Nenhum envio registrado ainda.</td></tr>
+    <tr><td colspan="6">Nenhum envio registrado ainda.</td></tr>
     {% endfor %}
   </tbody></table></div>
 </div>
+
+
+<div class="section-card">
+  <div class="admin-section-head">
+    <div>
+      <span class="admin-kicker">Diagnóstico</span>
+      <h2>Webhooks recentes da Z-API</h2>
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Evento</th><th>Telefone</th><th>Mensagem ID</th><th>Quando</th><th>Payload</th></tr></thead><tbody>
+    {% for item in webhook_logs %}
+    <tr>
+      <td>{{ item.event_type }}</td>
+      <td>{{ item.phone|phone_br if item.phone else '-' }}</td>
+      <td>{{ item.external_message_id or '-' }}</td>
+      <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else '-' }}</td>
+      <td><div class="payload-preview">{{ item.payload }}</div></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Nenhum webhook recebido ainda.</td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</div>
+
 {% endblock %}

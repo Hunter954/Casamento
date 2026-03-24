@@ -147,3 +147,15 @@ class WhatsAppDispatch(TimestampMixin, db.Model):
     error_message = db.Column(db.Text, default='')
     campaign = db.relationship('WhatsAppCampaign', backref='dispatches')
     contact = db.relationship('ContactLead', backref='dispatches')
+
+
+
+class WhatsAppWebhookLog(TimestampMixin, db.Model):
+    __tablename__ = 'whatsapp_webhook_log'
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(80), default='')
+    provider = db.Column(db.String(40), default='zapi')
+    external_message_id = db.Column(db.String(120), default='')
+    phone = db.Column(db.String(40), default='')
+    payload = db.Column(db.Text, default='')
+    notes = db.Column(db.Text, default='')

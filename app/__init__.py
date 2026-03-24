@@ -66,6 +66,16 @@ def _sync_schema(app):
             db.session.execute(text("ALTER TABLE whatsapp_dispatch ADD COLUMN error_message TEXT DEFAULT ''"))
         db.session.commit()
 
+    if inspector.has_table('whatsapp_webhook_log'):
+        webhook_columns = {column['name'] for column in inspector.get_columns('whatsapp_webhook_log')}
+        if 'external_message_id' not in webhook_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_webhook_log ADD COLUMN external_message_id VARCHAR(120) DEFAULT ''"))
+        if 'phone' not in webhook_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_webhook_log ADD COLUMN phone VARCHAR(40) DEFAULT ''"))
+        if 'notes' not in webhook_columns:
+            db.session.execute(text("ALTER TABLE whatsapp_webhook_log ADD COLUMN notes TEXT DEFAULT ''"))
+        db.session.commit()
+
 
 def create_app():
     app = Flask(__name__)
@@ -84,6 +94,7 @@ def create_app():
     app.config['ZAPI_TOKEN'] = os.getenv('ZAPI_TOKEN', '')
     app.config['ZAPI_CLIENT_TOKEN'] = os.getenv('ZAPI_CLIENT_TOKEN', '')
     app.config['ZAPI_BASE_URL'] = os.getenv('ZAPI_BASE_URL', 'https://api.z-api.io')
+    app.config['ZAPI_WEBHOOK_SECRET'] = os.getenv('ZAPI_WEBHOOK_SECRET', '')
 
     os.makedirs(app.config['UPLOAD_DIR'], exist_ok=True)
 
