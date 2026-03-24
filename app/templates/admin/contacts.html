@@ -1,47 +1,71 @@
 {% extends 'admin/base.html' %}
 {% block admin_content %}
-<div class="admin-header"><h1>Contatos</h1><p>Base oficial para os disparos do WhatsApp.</p></div>
-<form class="section-card stack-form" method="post">
-  <label>Nome do contato ou casal<input name="name" required placeholder="Kevin & Anita"></label>
-  <label>Telefone para envio<input name="phone" required inputmode="numeric" placeholder="5545999999999"></label>
-  <small class="admin-helper-inline">Cadastre no padrão 55 + DDD + número, somente números. Exemplo: 55459988186464.</small>
-  <label>Tag<input name="tag" value="convidado" placeholder="família, padrinhos, convidados"></label>
-  <button class="btn btn-primary">Salvar contato</button>
+<div class="admin-header">
+  <h1>Contatos</h1>
+  <p>Base oficial para os disparos do WhatsApp.</p>
+</div>
+
+<form class="section-card stack-form contacts-form-card{% if editing_contact %} is-editing{% endif %}" method="post">
+  <div class="contacts-form-head">
+    <div>
+      <span class="admin-kicker">{% if editing_contact %}Edição inline{% else %}Novo contato{% endif %}</span>
+      <h2>{% if editing_contact %}Editar contato{% else %}Cadastrar contato{% endif %}</h2>
+      <p>{% if editing_contact %}Altere os dados abaixo e salve no mesmo bloco, sem abrir outra aba.{% else %}Cadastre no padrão exato usado pela Z-API para evitar falhas no disparo.{% endif %}</p>
+    </div>
+    {% if editing_contact %}
+      <a class="btn btn-secondary" href="{{ url_for('admin.contacts') }}">Cancelar edição</a>
+    {% endif %}
+  </div>
+
+  <input type="hidden" name="contact_id" value="{{ editing_contact.id if editing_contact else '' }}">
+
+  <div class="contacts-form-grid">
+    <label>
+      Nome do contato ou casal
+      <input name="name" required placeholder="Kevin & Anita" value="{{ editing_contact.name if editing_contact else '' }}">
+    </label>
+
+    <label>
+      Telefone para envio
+      <input name="phone" required inputmode="numeric" pattern="[0-9]+" maxlength="13" placeholder="5545988186464" value="{{ editing_contact.phone if editing_contact else '' }}">
+      <small class="admin-helper-inline">Use somente números no padrão 55 + DDD + número. Exemplo: 5545988186464.</small>
+    </label>
+
+    <label>
+      Tag
+      <input name="tag" value="{{ editing_contact.tag if editing_contact else 'convidado' }}" placeholder="família, padrinhos, convidados">
+    </label>
+  </div>
+
+  <div class="contacts-form-actions">
+    <button class="btn btn-primary">{% if editing_contact %}Salvar alterações{% else %}Salvar contato{% endif %}</button>
+  </div>
 </form>
+
 <div class="section-card">
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
           <th>Nome</th>
-          <th>Telefone para envio</th>
+          <th>Telefone Z-API</th>
           <th>Visual</th>
           <th>Tag</th>
-          <th style="width: 320px;">Ações</th>
+          <th style="width: 180px;">Ações</th>
         </tr>
       </thead>
       <tbody>
       {% for item in contacts %}
         <tr>
           <td>{{ item.name }}</td>
-          <td>{{ item.phone }}</td>
+          <td><code>{{ item.phone }}</code></td>
           <td>{{ item.phone|phone_br }}</td>
           <td>{{ item.tag }}</td>
           <td>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <details style="width:100%;">
-                <summary class="btn btn-secondary" style="cursor:pointer; list-style:none; display:inline-flex; align-items:center;">Editar</summary>
-                <form method="post" action="{{ url_for('admin.edit_contact', contact_id=item.id) }}" class="stack-form" style="margin-top:12px; padding:14px; border:1px solid rgba(122,49,68,.12); border-radius:16px; background:#fff7f9;">
-                  <label>Nome do contato ou casal<input name="name" required value="{{ item.name }}"></label>
-                  <label>Telefone para envio<input name="phone" required inputmode="numeric" value="{{ item.phone }}"></label>
-                  <label>Tag<input name="tag" value="{{ item.tag }}"></label>
-                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn btn-primary" type="submit">Salvar alterações</button>
-                  </div>
-                </form>
-              </details>
-              <form method="post" action="{{ url_for('admin.delete_contact', contact_id=item.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este contato?');" style="margin:0;">
-                <button class="btn btn-danger" type="submit">Excluir</button>
+            <div class="table-actions-inline">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.contacts', edit=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('admin.delete_contact', contact_id=item.id) }}" onsubmit="return confirm('Excluir este contato?');" style="margin:0;">
+                <button class="btn btn-danger btn-sm" type="submit">Excluir</button>
               </form>
             </div>
           </td>
@@ -53,4 +77,75 @@
     </table>
   </div>
 </div>
+
+<style>
+  .contacts-form-card {
+    gap: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  }
+  .contacts-form-card.is-editing {
+    border-color: rgba(241, 77, 120, 0.35);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.14);
+  }
+  .contacts-form-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .contacts-form-head h2 {
+    margin: 0.2rem 0 0.35rem;
+  }
+  .contacts-form-head p {
+    margin: 0;
+    opacity: 0.78;
+  }
+  .admin-kicker {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .contacts-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .contacts-form-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .table-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: nowrap;
+  }
+  .btn-sm {
+    padding: 0.58rem 0.9rem;
+    font-size: 0.84rem;
+  }
+  @media (max-width: 980px) {
+    .contacts-form-grid {
+      grid-template-columns: 1fr;
+    }
+    .contacts-form-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .contacts-form-actions {
+      justify-content: stretch;
+    }
+    .contacts-form-actions .btn,
+    .contacts-form-head .btn {
+      width: 100%;
+      text-align: center;
+    }
+    .table-actions-inline {
+      flex-wrap: wrap;
+    }
+  }
+</style>
 {% endblock %}

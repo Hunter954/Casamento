@@ -257,49 +257,49 @@ def delete_purchase(purchase_id):
 @admin_bp.route('/contatos', methods=['GET', 'POST'])
 @login_required
 def contacts():
+    edit_id = request.args.get('edit', type=int)
+    editing_contact = ContactLead.query.get(edit_id) if edit_id else None
+
     if request.method == 'POST':
+        contact_id = request.form.get('contact_id', type=int)
         phone = normalize_phone_digits(request.form.get('phone', ''))
-        if len(phone) < 12 or not phone.startswith('55'):
-            flash('Cadastre o telefone no formato 55DDDNUMERO. Exemplo: 5545999999999.', 'danger')
-            return redirect(url_for('admin.contacts'))
 
-        contact = ContactLead(
-            name=request.form.get('name', '').strip(),
-            phone=phone,
-            email='',
-            tag=request.form.get('tag', 'convidado').strip() or 'convidado',
-        )
-        db.session.add(contact)
+        if not phone.startswith('55') or len(phone) not in {12, 13}:
+            flash('Cadastre o telefone no formato da Z-API: 55 + DDD + número. Exemplo: 5545988186464.', 'danger')
+            target = url_for('admin.contacts', edit=contact_id) if contact_id else url_for('admin.contacts')
+            return redirect(target)
+
+        name = request.form.get('name', '').strip()
+        tag = request.form.get('tag', 'convidado').strip() or 'convidado'
+
+        if contact_id:
+            contact = ContactLead.query.get_or_404(contact_id)
+            contact.name = name
+            contact.phone = phone
+            contact.tag = tag
+            flash('Contato atualizado com sucesso.', 'success')
+        else:
+            contact = ContactLead(
+                name=name,
+                phone=phone,
+                email='',
+                tag=tag,
+            )
+            db.session.add(contact)
+            flash('Contato salvo com sucesso.', 'success')
+
         db.session.commit()
-        flash('Contato salvo.', 'success')
         return redirect(url_for('admin.contacts'))
+
     contacts = ContactLead.query.order_by(ContactLead.created_at.desc()).all()
-    return render_template('admin/contacts.html', contacts=contacts)
-
-
-@admin_bp.route('/contatos/<int:contact_id>/editar', methods=['POST'])
-@login_required
-def edit_contact(contact_id):
-    contact = ContactLead.query.get_or_404(contact_id)
-    phone = normalize_phone_digits(request.form.get('phone', ''))
-
-    if len(phone) < 12 or not phone.startswith('55'):
-        flash('Cadastre o telefone no formato 55DDDNUMERO. Exemplo: 5545999999999.', 'danger')
-        return redirect(url_for('admin.contacts'))
-
-    contact.name = request.form.get('name', '').strip() or contact.name
-    contact.phone = phone
-    contact.tag = request.form.get('tag', 'convidado').strip() or 'convidado'
-    db.session.commit()
-    flash('Contato atualizado com sucesso.', 'success')
-    return redirect(url_for('admin.contacts'))
+    return render_template('admin/contacts.html', contacts=contacts, editing_contact=editing_contact)
 
 
 @admin_bp.route('/contatos/<int:contact_id>/excluir', methods=['POST'])
 @login_required
 def delete_contact(contact_id):
     contact = ContactLead.query.get_or_404(contact_id)
-    for dispatch in contact.dispatches:
+    for dispatch in list(contact.dispatches):
         db.session.delete(dispatch)
     db.session.delete(contact)
     db.session.commit()
