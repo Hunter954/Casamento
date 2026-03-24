@@ -3,6 +3,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from sqlalchemy import inspect, text
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,6 +11,26 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
+
+
+def _sync_schema(app):
+    inspector = inspect(db.engine)
+
+    if inspector.has_table('gift_item'):
+        gift_columns = {column['name'] for column in inspector.get_columns('gift_item')}
+        if 'allow_multiple_purchases' not in gift_columns:
+            db.session.execute(text("ALTER TABLE gift_item ADD COLUMN allow_multiple_purchases BOOLEAN DEFAULT TRUE"))
+            db.session.commit()
+
+    if inspector.has_table('site_settings'):
+        settings_columns = {column['name'] for column in inspector.get_columns('site_settings')}
+        if 'mercado_pago_enabled' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN mercado_pago_enabled BOOLEAN DEFAULT FALSE"))
+        if 'mercado_pago_access_token' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN mercado_pago_access_token TEXT DEFAULT ''"))
+        if 'mercado_pago_public_key' not in settings_columns:
+            db.session.execute(text("ALTER TABLE site_settings ADD COLUMN mercado_pago_public_key VARCHAR(255) DEFAULT ''"))
+        db.session.commit()
 
 
 def create_app():
@@ -49,5 +70,9 @@ def create_app():
     def inject_global_settings():
         settings = SiteSettings.query.first()
         return {'site_settings': settings}
+
+    with app.app_context():
+        db.create_all()
+        _sync_schema(app)
 
     return app

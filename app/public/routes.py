@@ -1,4 +1,3 @@
-from datetime import datetime
 from urllib.parse import quote_plus
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app import db
@@ -122,6 +121,11 @@ def gifts():
 def gift_checkout(gift_id):
     gift = GiftItem.query.get_or_404(gift_id)
     settings = SiteSettings.query.first()
+
+    if not gift.is_available:
+        flash('Este presente não está mais disponível.', 'warning')
+        return redirect(url_for('public.gifts'))
+
     if request.method == 'POST':
         purchase = GiftPurchase(
             gift_id=gift.id,

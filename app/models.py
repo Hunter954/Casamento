@@ -46,6 +46,9 @@ class SiteSettings(TimestampMixin, db.Model):
     allow_guestbook = db.Column(db.Boolean, default=True)
     require_guestbook_approval = db.Column(db.Boolean, default=True)
     whatsapp_message_template = db.Column(db.Text, default='Olá! Estamos muito felizes em compartilhar esse momento com você. Confirme sua presença no nosso site 💖')
+    mercado_pago_enabled = db.Column(db.Boolean, default=False)
+    mercado_pago_access_token = db.Column(db.Text, default='')
+    mercado_pago_public_key = db.Column(db.String(255), default='')
 
 
 class RSVP(TimestampMixin, db.Model):
@@ -75,6 +78,19 @@ class GiftItem(TimestampMixin, db.Model):
     price = db.Column(db.Float, nullable=False)
     image_url = db.Column(db.String(255), default='')
     active = db.Column(db.Boolean, default=True)
+    allow_multiple_purchases = db.Column(db.Boolean, default=True)
+
+    @property
+    def approved_purchases_count(self):
+        return sum(1 for purchase in self.purchases if purchase.status == 'approved')
+
+    @property
+    def is_sold_out(self):
+        return (not self.allow_multiple_purchases) and self.approved_purchases_count > 0
+
+    @property
+    def is_available(self):
+        return self.active and not self.is_sold_out
 
 
 class GiftPurchase(TimestampMixin, db.Model):

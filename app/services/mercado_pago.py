@@ -1,13 +1,29 @@
 import requests
 from flask import current_app
+from app.models import SiteSettings
 
 
 class MercadoPagoService:
-    API_URL = 'https://api.mercadopago.com/checkout/preferences'
+    PREFERENCES_API_URL = 'https://api.mercadopago.com/checkout/preferences'
+    PAYMENTS_API_URL = 'https://api.mercadopago.com/v1/payments/{payment_id}'
+
+    @classmethod
+    def get_settings(cls):
+        return SiteSettings.query.first()
+
+    @classmethod
+    def get_access_token(cls):
+        settings = cls.get_settings()
+        if settings and settings.mercado_pago_enabled and (settings.mercado_pago_access_token or '').strip():
+            return settings.mercado_pago_access_token.strip()
+        return (current_app.config.get('MERCADO_PAGO_ACCESS_TOKEN') or '').strip()
 
     @classmethod
     def is_enabled(cls):
-        return bool(current_app.config.get('MERCADO_PAGO_ACCESS_TOKEN'))
+        settings = cls.get_settings()
+        if settings and settings.mercado_pago_enabled:
+            return bool((settings.mercado_pago_access_token or '').strip())
+        return bool(cls.get_access_token())
 
     @classmethod
     def create_preference(cls, purchase, gift_title, success_url, pending_url, failure_url, notification_url):
@@ -39,10 +55,10 @@ class MercadoPagoService:
             'notification_url': notification_url,
         }
         headers = {
-            'Authorization': f"Bearer {current_app.config['MERCADO_PAGO_ACCESS_TOKEN']}",
+            'Authorization': f"Bearer {cls.get_access_token()}",
             'Content-Type': 'application/json',
         }
-        response = requests.post(cls.API_URL, json=payload, headers=headers, timeout=20)
+        response = requests.post(cls.PREFERENCES_API_URL, json=payload, headers=headers, timeout=20)
         response.raise_for_status()
         data = response.json()
         return {
@@ -50,3 +66,12 @@ class MercadoPagoService:
             'sandbox_url': data.get('init_point') or data.get('sandbox_init_point'),
             'reference': data.get('id', ''),
         }
+
+    @classmethod
+    def fetch_payment(cls, payment_id):
+        if not payment_id or not cls.is_enabled():
+            return {}
+        headers = {'Authorization': f"Bearer {cls.get_access_token()}"}
+        response = requests.get(cls.PAYMENTS_API_URL.format(payment_id=payment_id), headers=headers, timeout=20)
+        response.raise_for_status()
+        return response.json()

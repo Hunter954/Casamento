@@ -8,6 +8,13 @@ from app.services.whatsapp import send_campaign_messages
 admin_bp = Blueprint('admin', __name__)
 
 
+def _to_float(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -71,6 +78,9 @@ def settings():
         settings.allow_guestbook = request.form.get('allow_guestbook') == 'on'
         settings.require_guestbook_approval = request.form.get('require_guestbook_approval') == 'on'
         settings.whatsapp_message_template = request.form.get('whatsapp_message_template', '')
+        settings.mercado_pago_enabled = request.form.get('mercado_pago_enabled') == 'on'
+        settings.mercado_pago_access_token = request.form.get('mercado_pago_access_token', '').strip()
+        settings.mercado_pago_public_key = request.form.get('mercado_pago_public_key', '').strip()
 
         hero = request.files.get('hero_image')
         banner = request.files.get('gift_banner_image')
@@ -92,11 +102,12 @@ def settings():
 def manage_gifts():
     if request.method == 'POST':
         gift = GiftItem(
-            title=request.form.get('title', ''),
-            description=request.form.get('description', ''),
-            price=float(request.form.get('price', 0) or 0),
+            title=request.form.get('title', '').strip(),
+            description=request.form.get('description', '').strip(),
+            price=_to_float(request.form.get('price', 0)),
             image_url='',
             active=request.form.get('active') == 'on',
+            allow_multiple_purchases=request.form.get('allow_multiple_purchases') == 'on',
         )
         image_file = request.files.get('image_file')
         image_path = save_upload(image_file)
@@ -107,7 +118,31 @@ def manage_gifts():
         flash('Presente cadastrado.', 'success')
         return redirect(url_for('admin.manage_gifts'))
     gifts = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
-    return render_template('admin/gifts.html', gifts=gifts)
+    return render_template('admin/gifts.html', gifts=gifts, edit_gift=None)
+
+
+@admin_bp.route('/presentes/<int:gift_id>/editar', methods=['GET', 'POST'])
+@login_required
+def edit_gift(gift_id):
+    gift = GiftItem.query.get_or_404(gift_id)
+    if request.method == 'POST':
+        gift.title = request.form.get('title', '').strip()
+        gift.description = request.form.get('description', '').strip()
+        gift.price = _to_float(request.form.get('price', 0))
+        gift.active = request.form.get('active') == 'on'
+        gift.allow_multiple_purchases = request.form.get('allow_multiple_purchases') == 'on'
+
+        image_file = request.files.get('image_file')
+        image_path = save_upload(image_file)
+        if image_path:
+            gift.image_url = image_path
+
+        db.session.commit()
+        flash('Presente atualizado.', 'success')
+        return redirect(url_for('admin.manage_gifts'))
+
+    gifts = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
+    return render_template('admin/gifts.html', gifts=gifts, edit_gift=gift)
 
 
 @admin_bp.route('/presentes/<int:gift_id>/toggle')
@@ -117,6 +152,16 @@ def toggle_gift(gift_id):
     gift.active = not gift.active
     db.session.commit()
     flash('Status do presente atualizado.', 'success')
+    return redirect(url_for('admin.manage_gifts'))
+
+
+@admin_bp.route('/presentes/<int:gift_id>/excluir', methods=['POST'])
+@login_required
+def delete_gift(gift_id):
+    gift = GiftItem.query.get_or_404(gift_id)
+    db.session.delete(gift)
+    db.session.commit()
+    flash('Presente excluído.', 'success')
     return redirect(url_for('admin.manage_gifts'))
 
 
@@ -141,6 +186,26 @@ def approve_message(message_id):
     message.approved = True
     db.session.commit()
     flash('Recado aprovado.', 'success')
+    return redirect(url_for('admin.manage_guestbook'))
+
+
+@admin_bp.route('/mural/<int:message_id>/desaprovar')
+@login_required
+def disapprove_message(message_id):
+    message = GuestbookMessage.query.get_or_404(message_id)
+    message.approved = False
+    db.session.commit()
+    flash('Recado movido para pendente.', 'success')
+    return redirect(url_for('admin.manage_guestbook'))
+
+
+@admin_bp.route('/mural/<int:message_id>/excluir', methods=['POST'])
+@login_required
+def delete_message(message_id):
+    message = GuestbookMessage.query.get_or_404(message_id)
+    db.session.delete(message)
+    db.session.commit()
+    flash('Recado excluído.', 'success')
     return redirect(url_for('admin.manage_guestbook'))
 
 
