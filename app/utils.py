@@ -13,6 +13,15 @@ def format_currency(value):
     return f'R$ {numeric:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
+def normalize_phone_digits(value, default_country_code='55'):
+    digits = ''.join(char for char in str(value or '') if char.isdigit())
+    if not digits:
+        return ''
+    if default_country_code and not digits.startswith(default_country_code) and len(digits) in {10, 11}:
+        return f'{default_country_code}{digits}'
+    return digits
+
+
 def format_phone(value):
     digits = ''.join(char for char in str(value or '') if char.isdigit())
     if len(digits) == 11:
@@ -22,7 +31,10 @@ def format_phone(value):
     if len(digits) > 11:
         country = digits[:-11]
         local = digits[-11:]
-        return f'+{country} ({local[:2]}) {local[2:7]}-{local[7:]}'
+        if len(local) == 11:
+            return f'+{country} ({local[:2]}) {local[2:7]}-{local[7:]}'
+        if len(local) == 10:
+            return f'+{country} ({local[:2]}) {local[2:6]}-{local[6:]}'
     return str(value or '').strip()
 
 

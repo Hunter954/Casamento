@@ -13,7 +13,7 @@ from app.models import (
     WhatsAppCampaign,
     WhatsAppDispatch,
 )
-from app.utils import save_upload, parse_datetime, format_phone
+from app.utils import save_upload, parse_datetime, format_phone, normalize_phone_digits
 from app.services.whatsapp import send_campaign_messages, send_test_message, WhatsAppConfigError
 
 admin_bp = Blueprint('admin', __name__)
@@ -106,7 +106,7 @@ def settings():
         settings.zapi_instance_id = request.form.get('zapi_instance_id', '').strip()
         settings.zapi_token = request.form.get('zapi_token', '').strip()
         settings.zapi_client_token = request.form.get('zapi_client_token', '').strip()
-        settings.zapi_sender_number = format_phone(request.form.get('zapi_sender_number', '').strip())
+        settings.zapi_sender_number = normalize_phone_digits(request.form.get('zapi_sender_number', '').strip())
         settings.zapi_base_url = request.form.get('zapi_base_url', 'https://api.z-api.io').strip() or 'https://api.z-api.io'
         settings.zapi_delay_seconds = int(request.form.get('zapi_delay_seconds', 4) or 4)
 
@@ -251,7 +251,7 @@ def contacts():
     if request.method == 'POST':
         contact = ContactLead(
             name=request.form.get('name', ''),
-            phone=format_phone(request.form.get('phone', '')),
+            phone=normalize_phone_digits(request.form.get('phone', '')),
             email=request.form.get('email', ''),
             tag=request.form.get('tag', 'convidado'),
         )

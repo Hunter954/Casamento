@@ -80,7 +80,10 @@
       <label>Instance ID<input name="zapi_instance_id" value="{{ settings.zapi_instance_id or '' }}" placeholder="sua-instance"></label>
       <label>Token<input name="zapi_token" value="{{ settings.zapi_token or '' }}" placeholder="token da instância"></label>
       <label>Client-Token<input name="zapi_client_token" value="{{ settings.zapi_client_token or '' }}" placeholder="client-token"></label>
-      <label>Número remetente<input name="zapi_sender_number" data-phone-mask value="{{ settings.zapi_sender_number|phone_br if settings.zapi_sender_number else '' }}" placeholder="(45) 98818-6464"></label>
+      <label>Número remetente
+        <input name="zapi_sender_number" inputmode="numeric" value="{{ settings.zapi_sender_number or '' }}" placeholder="5545988186464">
+        <small class="admin-helper-inline">Use somente números no padrão 55 + DDD + número.</small>
+      </label>
       <label>Base URL<input name="zapi_base_url" value="{{ settings.zapi_base_url or 'https://api.z-api.io' }}"></label>
       <label>Delay entre mensagens (1 a 15s)<input type="number" min="1" max="15" name="zapi_delay_seconds" value="{{ settings.zapi_delay_seconds or 4 }}"></label>
     </div>
@@ -93,7 +96,10 @@
         </div>
       </div>
       <div class="admin-form-grid two-cols">
-        <label>Número para teste<input name="test_phone" data-phone-mask placeholder="(45) 98818-6464"></label>
+        <label>Número para teste
+          <input name="test_phone" inputmode="numeric" placeholder="5545988186464">
+          <small class="admin-helper-inline">Digite somente números para o teste da Z-API.</small>
+        </label>
         <label>Mensagem<textarea name="test_message" placeholder="Olá! Esse é um teste da Z-API no site."></textarea></label>
       </div>
       <button class="btn btn-soft" formaction="{{ url_for('admin.test_whatsapp') }}" formmethod="post">Enviar teste</button>

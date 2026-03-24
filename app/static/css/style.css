@@ -11,3 +11,5 @@
 .compact-stack textarea{min-height:110px}
 .whatsapp-mini-stats{grid-template-columns:repeat(4,1fr)}
 @media (max-width:900px){.whatsapp-mini-stats{grid-template-columns:repeat(2,1fr)}}
+
+.admin-helper-inline{display:block;margin-top:6px;color:#7b6f77;font-size:.88rem;line-height:1.45;}
