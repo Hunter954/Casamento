@@ -186,12 +186,12 @@ def send_campaign_messages(campaign, contacts: Iterable, tag_filter: str | None 
         personalized_message = render_campaign_message(campaign.message, contact=contact, settings=settings, site_url=site_url)
         try:
             response = _post_send_text(phone=contact.phone, message=personalized_message)
-            existing.status = 'sent'
-            existing.sent_at = datetime.utcnow()
+            existing.status = 'queued'
+            existing.sent_at = None
             existing.provider_message_id = response.get('message_id', '')
             existing.response_body = _dispatch_response_text(response.get('response'))
             existing.error_message = ''
-            results.append({'contact': contact, 'status': 'sent'})
+            results.append({'contact': contact, 'status': 'queued'})
         except Exception as exc:
             existing.status = 'error'
             existing.error_message = str(exc)

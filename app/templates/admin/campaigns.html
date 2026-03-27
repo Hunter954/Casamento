@@ -5,8 +5,8 @@
 <div class="stats-grid whatsapp-mini-stats">
   <div class="stat-card"><span>Contatos cadastrados</span><strong>{{ contacts|length }}</strong></div>
   <div class="stat-card"><span>Campanhas criadas</span><strong>{{ campaigns|length }}</strong></div>
-  <div class="stat-card"><span>Envios com sucesso</span><strong>{{ dispatches|selectattr('status', 'equalto', 'sent')|list|length }}</strong></div>
-  <div class="stat-card"><span>Falhas recentes</span><strong>{{ dispatches|selectattr('status', 'equalto', 'error')|list|length }}</strong></div>
+  <div class="stat-card"><span>Entregues / confirmados</span><strong>{{ dispatch_summary.delivered }}</strong></div>
+  <div class="stat-card"><span>Falhas recentes</span><strong>{{ dispatch_summary.error }}</strong></div>
 </div>
 
 <form class="section-card stack-form admin-form-card" method="post">
@@ -52,7 +52,8 @@
       <td><div class="payload-preview">{{ item.message }}</div></td>
       <td>
         <div class="admin-tag-row">
-          <span class="admin-tag tag-success">{{ metrics.get('sent', 0) }} enviados</span>
+          <span class="admin-tag tag-success">{{ metrics.get('sent', 0) }} entregues</span>
+          <span class="admin-tag tag-neutral">{{ metrics.get('queued', 0) }} na fila</span>
           <span class="admin-tag tag-warning">{{ metrics.get('errors', 0) }} erros</span>
           <span class="admin-tag tag-neutral">{{ metrics.get('pending', 0) }} faltam</span>
           <span class="admin-tag tag-neutral">{{ metrics.get('eligible', 0) }} elegíveis</span>
@@ -94,11 +95,11 @@
       <td>{{ item.phone_sent or (item.contact.phone if item.contact else '-') }}</td>
       <td>{{ item.campaign.title if item.campaign else '-' }}</td>
       <td>
-        <span class="admin-tag {% if item.status == 'sent' %}tag-success{% elif item.status == 'error' %}tag-warning{% else %}tag-neutral{% endif %}">
+        <span class="admin-tag {% if item.status in ['sent', 'delivered', 'delivery', 'received', 'read'] %}tag-success{% elif item.status == 'error' %}tag-warning{% else %}tag-neutral{% endif %}">
           {{ item.status }}
         </span>
       </td>
-      <td>{% if item.error_message %}{{ item.error_message }}{% elif item.sent_at %}{{ item.sent_at.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</td>
+      <td>{% if item.error_message %}{{ item.error_message }}{% elif item.sent_at %}{{ item.sent_at.strftime('%d/%m/%Y %H:%M') }}{% elif item.status == 'queued' %}A Z-API aceitou a requisição, mas ainda não houve confirmação de entrega no webhook.{% else %}-{% endif %}</td>
       <td><div class="payload-preview">{{ item.response_body or '-' }}</div></td>
     </tr>
     {% else %}
@@ -124,7 +125,7 @@
       <td><div class="payload-preview">{{ item.payload }}</div></td>
     </tr>
     {% else %}
-    <tr><td colspan="5">Nenhum webhook recebido ainda.</td></tr>
+    <tr><td colspan="5">Nenhum webhook recebido ainda. Sem webhook, o painel não consegue confirmar se a mensagem foi realmente entregue.</td></tr>
     {% endfor %}
   </tbody></table></div>
 </div>

@@ -344,18 +344,26 @@ def campaigns():
     tags = _tag_options()
     settings = SiteSettings.query.first()
 
+    dispatch_summary = {
+        'delivered': len([d for d in dispatches if d.status in {'sent', 'delivered', 'delivery', 'received', 'read'}]),
+        'queued': len([d for d in dispatches if d.status == 'queued']),
+        'error': len([d for d in dispatches if d.status == 'error']),
+    }
+
     campaign_metrics = {}
     for item in campaigns:
         eligible_contacts = [c for c in contacts if item.target_tag == 'todos' or (c.tag or '').strip().lower() == item.target_tag.strip().lower()]
         eligible_ids = {c.id for c in eligible_contacts}
         relevant_dispatches = [d for d in item.dispatches if d.contact_id in eligible_ids]
-        sent_count = len([d for d in relevant_dispatches if d.status == 'sent'])
+        delivered_count = len([d for d in relevant_dispatches if d.status in {'sent', 'delivered', 'delivery', 'received', 'read'}])
+        queued_count = len([d for d in relevant_dispatches if d.status == 'queued'])
         error_count = len([d for d in relevant_dispatches if d.status == 'error'])
         processed_ids = {d.contact_id for d in relevant_dispatches}
         pending_count = max(0, len(eligible_ids - processed_ids))
         campaign_metrics[item.id] = {
             'eligible': len(eligible_contacts),
-            'sent': sent_count,
+            'sent': delivered_count,
+            'queued': queued_count,
             'errors': error_count,
             'pending': pending_count,
         }
@@ -369,6 +377,7 @@ def campaigns():
         settings=settings,
         webhook_logs=webhook_logs,
         campaign_metrics=campaign_metrics,
+        dispatch_summary=dispatch_summary,
     )
 
 
@@ -389,7 +398,7 @@ def trigger_campaign(campaign_id):
             settings=settings,
             site_url=site_url,
         )
-        sent = len([r for r in results if r['status'] == 'sent'])
+        queued = len([r for r in results if r['status'] == 'queued'])
         skipped = len([r for r in results if r['status'] == 'skipped'])
         errors = len([r for r in results if r['status'] == 'error'])
         scope_label = {
@@ -397,7 +406,7 @@ def trigger_campaign(campaign_id):
             'errors': 'com erro',
             'all': 'selecionados',
         }.get(send_scope, 'selecionados')
-        flash(f'Campanha processada para contatos {scope_label}. Enviados: {sent} | Ignorados: {skipped} | Erros: {errors}.', 'success' if errors == 0 else 'warning')
+        flash(f'Campanha processada para contatos {scope_label}. Na fila da Z-API: {queued} | Ignorados: {skipped} | Erros: {errors}.', 'success' if errors == 0 else 'warning')
     except WhatsAppConfigError as exc:
         flash(str(exc), 'danger')
     return redirect(url_for('admin.campaigns'))
