@@ -148,11 +148,15 @@ def test_whatsapp():
 @admin_bp.route('/presentes', methods=['GET', 'POST'])
 @login_required
 def manage_gifts():
+    edit_id = request.args.get('edit', type=int)
+    edit_gift = GiftItem.query.get(edit_id) if edit_id else None
+
     if request.method == 'POST':
-        image_path = save_upload(request.files.get('image')) if request.files.get('image') else ''
+        image_upload = request.files.get('image')
+        image_path = save_upload(image_upload) if image_upload and image_upload.filename else ''
         item = GiftItem(
-            title=request.form.get('title', ''),
-            description=request.form.get('description', ''),
+            title=request.form.get('title', '').strip(),
+            description=request.form.get('description', '').strip(),
             price=_to_float((request.form.get('price', '') or '').replace('.', '').replace(',', '.')),
             image_url=image_path,
             active=request.form.get('active') == 'on',
@@ -162,8 +166,19 @@ def manage_gifts():
         db.session.commit()
         flash('Presente cadastrado com sucesso.', 'success')
         return redirect(url_for('admin.manage_gifts'))
+
     gifts = GiftItem.query.order_by(GiftItem.created_at.desc()).all()
-    return render_template('admin/gifts.html', gifts=gifts)
+    return render_template('admin/gifts.html', gifts=gifts, edit_gift=edit_gift)
+
+
+@admin_bp.route('/presentes/<int:gift_id>/toggle', methods=['POST'])
+@login_required
+def toggle_gift(gift_id):
+    gift = GiftItem.query.get_or_404(gift_id)
+    gift.active = not gift.active
+    db.session.commit()
+    flash(f'Presente {"ativado" if gift.active else "desativado"} com sucesso.', 'success')
+    return redirect(url_for('admin.manage_gifts'))
 
 
 @admin_bp.route('/presentes/<int:gift_id>/editar', methods=['POST'])

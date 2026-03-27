@@ -27,7 +27,7 @@
       <textarea name="description">{{ edit_gift.description if edit_gift else '' }}</textarea>
     </label>
     <label>Imagem do presente
-      <input type="file" name="image_file" accept="image/*">
+      <input type="file" name="image" accept="image/*">
     </label>
     <div class="gift-config-box">
       <label class="checkline"><input type="checkbox" name="active" {% if edit_gift %}{% if edit_gift.active %}checked{% endif %}{% else %}checked{% endif %}> Presente ativo no site</label>
@@ -77,8 +77,8 @@
         </div>
       </div>
       <div class="admin-card-actions">
-        <a href="{{ url_for('admin.edit_gift', gift_id=gift.id) }}" class="btn btn-soft">Editar</a>
-        <a href="{{ url_for('admin.toggle_gift', gift_id=gift.id) }}" class="btn btn-soft">{{ 'Desativar' if gift.active else 'Ativar' }}</a>
+        <a href="{{ url_for('admin.manage_gifts', edit=gift.id) }}" class="btn btn-soft">Editar</a>
+        <form method="post" action="{{ url_for('admin.toggle_gift', gift_id=gift.id) }}"><button type="submit" class="btn btn-soft">{{ 'Desativar' if gift.active else 'Ativar' }}</button></form>
         <form method="post" action="{{ url_for('admin.delete_gift', gift_id=gift.id) }}" onsubmit="return confirm('Deseja realmente excluir este presente?');">
           <button class="btn btn-soft btn-danger-outline" type="submit">Excluir</button>
         </form>
