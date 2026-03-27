@@ -74,7 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Escape') closeMenu();
   });
 
-  const phoneInputs = document.querySelectorAll('input[data-phone-mask], input[name="buyer_phone"], input[name="phone"]');
+  const maskedPhoneInputs = document.querySelectorAll('input[data-phone-mask], input[name="buyer_phone"]');
+  const zapiPhoneInputs = document.querySelectorAll('input[data-zapi-phone]');
   const formatPhone = (value) => {
     const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
     if (!digits) return '';
@@ -84,10 +85,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
-  phoneInputs.forEach((input) => {
+  maskedPhoneInputs.forEach((input) => {
     input.addEventListener('input', () => {
       input.value = formatPhone(input.value);
     });
     input.value = formatPhone(input.value);
+  });
+
+  zapiPhoneInputs.forEach((input) => {
+    const sanitizeDigits = () => {
+      input.value = String(input.value || '').replace(/\D/g, '').slice(0, 13);
+    };
+
+    input.addEventListener('input', sanitizeDigits);
+    input.addEventListener('paste', () => {
+      requestAnimationFrame(sanitizeDigits);
+    });
+    sanitizeDigits();
   });
 });
